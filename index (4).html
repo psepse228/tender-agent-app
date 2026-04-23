@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tender Agent</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --surface3: #20202e;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f5;
+    --text-sub: #8888aa;
+    --text-muted: #4a4862;
+    --accent: #7c6bff;
+    --accent-light: #a99bff;
+    --accent-dim: rgba(124,107,255,0.12);
+    --accent-glow: rgba(124,107,255,0.25);
+    --green: #00e676;
+    --green-dim: rgba(0,230,118,0.1);
+    --green-border: rgba(0,230,118,0.2);
+    --amber: #ffab40;
+    --amber-dim: rgba(255,171,64,0.1);
+    --amber-border: rgba(255,171,64,0.2);
+    --red: #ff5252;
+    --red-dim: rgba(255,82,82,0.1);
+    --red-border: rgba(255,82,82,0.2);
+    --r: 14px;
+    --r-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { min-height: 100vh; overflow-x: hidden; }
+
+  body {
+    font-family: 'Manrope', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 60px;
+  }
+
+  /* ─── LOADER ─── */
+  .loader {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 999; gap: 20px;
+    transition: opacity 0.5s, visibility 0.5s;
+  }
+  .loader.hidden { opacity: 0; visibility: hidden; }
+
+  .loader-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 38px;
+    letter-spacing: 6px;
+    color: var(--accent);
+    filter: drop-shadow(0 0 20px var(--accent-glow));
+  }
+  .loader-dots { display: flex; gap: 6px; }
+  .loader-dots span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: dotPulse 1.2s ease-in-out infinite;
+  }
+  .loader-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loader-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotPulse {
+    0%,100% { opacity: 0.2; transform: scale(0.7); }
+    50% { opacity: 1; transform: scale(1); }
+  }
+
+  /* ─── HEADER ─── */
+  .header {
+    position: sticky; top: 0; z-index: 50;
+    background: linear-gradient(180deg, var(--bg) 85%, transparent);
+    padding: 18px 20px 14px;
+  }
+  .header-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 4px;
+    color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .logo-badge {
+    font-family: 'Manrope', sans-serif;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    color: var(--accent-light);
+    margin-top: 2px;
+  }
+  .header-right { display: flex; gap: 8px; }
+
+  .hdr-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--text-sub);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .hdr-btn:active { transform: scale(0.88); }
+  .hdr-btn.active { border-color: var(--accent); color: var(--accent-light); background: var(--accent-dim); }
+  .hdr-btn .badge {
+    position: absolute; top: -3px; right: -3px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    font-size: 8px;
+    font-weight: 800;
+    color: white;
+    align-items: center; justify-content: center;
+    border: 2px solid var(--bg);
+    display: none;
+  }
+  .hdr-btn .badge.show { display: flex; }
+  .spinning { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .header-rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border2) 40%, var(--border2) 60%, transparent);
+    margin-top: 14px;
+  }
+
+  /* ─── STATS BAR ─── */
+  .stats-wrap {
+    padding: 16px 16px 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .stat-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 14px 10px 12px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .stat-tile::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 10%; right: 10%; height: 1px;
+    background: var(--accent-dim);
+  }
+  .stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 34px;
+    line-height: 1;
+    margin-bottom: 5px;
+    color: var(--text);
+  }
+  .stat-lbl {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .stat-tile.s-accent .stat-num { color: var(--accent-light); }
+  .stat-tile.s-green .stat-num { color: var(--green); }
+
+  /* ─── SORT BAR ─── */
+  .sort-bar {
+    padding: 14px 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sort-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .sort-pills { display: flex; gap: 6px; }
+  .sort-pill {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-sub);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Manrope', sans-serif;
+    transition: all 0.2s;
+  }
+  .sort-pill.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent-light);
+  }
+
+  /* ─── FILTERS ─── */
+  .filters-row {
+    padding: 12px 16px 0;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filters-row::-webkit-scrollbar { display: none; }
+  .f-pill {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-sub);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Manrope', sans-serif;
+    transition: all 0.2s;
+  }
+  .f-pill.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent-light);
+  }
+
+  /* ─── TIMESTAMP ─── */
+  .ts-row {
+    padding: 10px 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ts-text { font-size: 10px; color: var(--text-muted); }
+  .result-count { font-size: 10px; color: var(--accent); font-weight: 700; }
+
+  /* ─── CARDS ─── */
+  .cards-list {
+    padding: 12px 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .tcard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+    animation: cardIn 0.45s ease forwards;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: border-color 0.2s;
+  }
+  @keyframes cardIn { to { opacity: 1; transform: none; } }
+  .tcard.open { border-color: rgba(124,107,255,0.3); }
+
+  /* Score accent strip */
+  .tcard-strip { height: 2px; width: 100%; }
+  .strip-high { background: linear-gradient(90deg, var(--green) 0%, transparent 100%); }
+  .strip-mid { background: linear-gradient(90deg, var(--amber) 0%, transparent 100%); }
+  .strip-low { background: linear-gradient(90deg, var(--red) 0%, transparent 100%); }
+
+  /* Card header row */
+  .tcard-head {
+    padding: 13px 14px 10px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    cursor: pointer;
+  }
+
+  /* Score ring */
+  .score-ring {
+    flex-shrink: 0;
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border: 1.5px solid transparent;
+  }
+  .ring-high { background: var(--green-dim); border-color: rgba(0,230,118,0.3); color: var(--green); }
+  .ring-mid { background: var(--amber-dim); border-color: rgba(255,171,64,0.3); color: var(--amber); }
+  .ring-low { background: var(--red-dim); border-color: rgba(255,82,82,0.3); color: var(--red); }
+
+  .ring-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    line-height: 1;
+  }
+  .ring-pct {
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    opacity: 0.75;
+  }
+
+  .tcard-info { flex: 1; min-width: 0; }
+  .tcard-title {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .tcard-org {
+    font-size: 11px;
+    color: var(--text-sub);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tcard-chevron {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 6px;
+    transition: transform 0.3s;
+  }
+  .tcard.open .tcard-chevron { transform: rotate(180deg); }
+
+  /* Meta chips row */
+  .tcard-meta {
+    padding: 0 14px 12px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .m-chip {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--text-sub);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .m-chip.deadline-near { background: var(--amber-dim); color: var(--amber); border-color: var(--amber-border); }
+  .m-chip.deadline-urgent { background: var(--red-dim); color: var(--red); border-color: var(--red-border); }
+
+  /* Expanded body */
+  .tcard-body {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 14px;
+    animation: bodyIn 0.25s ease;
+  }
+  @keyframes bodyIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .tcard.open .tcard-body { display: block; }
+
+  /* Reasoning block */
+  .reasoning-box {
+    background: var(--surface2);
+    border-radius: var(--r-sm);
+    padding: 14px;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--accent);
+    position: relative;
+  }
+  .box-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-light);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .box-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--accent-dim);
+  }
+  .reasoning-text {
+    font-size: 13.5px;
+    color: var(--text);
+    line-height: 1.7;
+    font-weight: 400;
+    opacity: 0.85;
+  }
+
+  /* Details grid */
+  .details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .detail-item {
+    background: var(--surface2);
+    border-radius: var(--r-sm);
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+  }
+  .detail-key {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .detail-val {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-word;
+  }
+  .detail-val.green { color: var(--green); }
+  .detail-val.amber { color: var(--amber); }
+  .detail-val.red { color: var(--red); }
+
+  /* Match bar */
+  .match-bar-wrap {
+    background: var(--surface2);
+    border-radius: var(--r-sm);
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+  }
+  .match-bar-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .match-bar-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .match-bar-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+  }
+  .match-track {
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .match-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Action buttons */
+  .action-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .act-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 12px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text-sub);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Manrope', sans-serif;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .act-btn:active { transform: scale(0.95); }
+  .act-btn.saved {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent-light);
+  }
+  .act-btn.refreshing { opacity: 0.6; pointer-events: none; }
+  .act-btn-open {
+    padding: 9px 14px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--accent-dim);
+    background: var(--accent-dim);
+    color: var(--accent-light);
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    font-family: 'Manrope', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .act-btn-open:active { background: var(--accent-glow); }
+
+  /* Recommendation badge */
+  .rec-wrap {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rec-badge {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 6px;
+  }
+  .rec-apply { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); }
+  .rec-consider { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber-border); }
+  .rec-skip { background: var(--red-dim); color: var(--red); border: 1px solid var(--red-border); }
+
+  /* ─── FAVORITES VIEW ─── */
+  .fav-banner {
+    margin: 12px 16px 0;
+    padding: 12px 14px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(124,107,255,0.2);
+    border-radius: var(--r-sm);
+    font-size: 12px;
+    color: var(--accent-light);
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .fav-banner.show { display: flex; }
+
+  /* ─── ERROR ─── */
+  .err-bar {
+    margin: 12px 16px 0;
+    padding: 10px 14px;
+    background: var(--red-dim);
+    border: 1px solid var(--red-border);
+    border-radius: var(--r-sm);
+    font-size: 11px;
+    color: var(--red);
+    display: none; align-items: center; gap: 8px;
+  }
+  .err-bar.show { display: flex; }
+
+  /* ─── EMPTY ─── */
+  .empty {
+    text-align: center;
+    padding: 60px 30px;
+    display: none;
+  }
+  .empty.show { display: block; }
+  .empty-icon { font-size: 40px; margin-bottom: 14px; opacity: 0.4; }
+  .empty-title { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 2px; color: var(--text-sub); margin-bottom: 8px; }
+  .empty-desc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+  /* ─── HIDDEN ─── */
+  .hidden-el { display: none !important; }
+
+  /* ─── GRAIN TEXTURE ─── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  /* ─── BETA BANNER ─── */
+  .beta-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    background: linear-gradient(90deg, rgba(124,107,255,0.08), rgba(124,107,255,0.15), rgba(124,107,255,0.08));
+    border-bottom: 1px solid rgba(124,107,255,0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  .beta-banner::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(124,107,255,0.1), transparent);
+    animation: betaSweep 3s ease-in-out infinite;
+  }
+  @keyframes betaSweep {
+    0%,100% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+  }
+  .beta-tag {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent-light);
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    animation: betaGlow 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes betaGlow {
+    0%,100% { box-shadow: 0 0 6px var(--accent-glow); }
+    50% { box-shadow: 0 0 14px var(--accent-glow); }
+  }
+  .beta-text {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+  }
+  .beta-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+    animation: livePulse 1.5s ease-in-out infinite;
+  }
+  @keyframes livePulse {
+    0%,100% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1); box-shadow: 0 0 6px var(--green); }
+  }
+  .beta-version {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  /* ─── HIGHLIGHT CARD ─── */
+  .highlight-wrap { padding: 16px 16px 0; }
+  .highlight-card {
+    background: linear-gradient(135deg, rgba(124,107,255,0.15), rgba(124,107,255,0.05));
+    border: 1px solid rgba(124,107,255,0.3);
+    border-radius: var(--r);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .highlight-card:active { transform: scale(0.99); }
+  .highlight-card::after {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124,107,255,0.15), transparent 70%);
+    pointer-events: none;
+  }
+  .hl-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .hl-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--accent-light);
+  }
+  .hl-score {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: var(--green);
+    line-height: 1;
+    filter: drop-shadow(0 0 8px rgba(0,230,118,0.4));
+  }
+  .hl-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .hl-org {
+    font-size: 11px;
+    color: var(--text-sub);
+    margin-bottom: 10px;
+  }
+  .hl-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .hl-rec {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .hl-apply   { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); }
+  .hl-consider{ background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber-border); }
+  .hl-skip    { background: var(--red-dim);   color: var(--red);   border: 1px solid var(--red-border); }
+  /* fallback */
+  .hl-rec:not([class*="hl-apply"]):not([class*="hl-consider"]):not([class*="hl-skip"]) {
+    background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border);
+  }
+  .hl-budget {
+    font-size: 11px;
+    color: var(--text-sub);
+    font-weight: 600;
+  }
+
+  /* ─── STATUS TRACKER ─── */
+  .status-row {
+    display: flex;
+    gap: 4px;
+    margin-top: 12px;
+  }
+  .status-btn {
+    flex: 1;
+    padding: 7px 2px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: 'Manrope', sans-serif;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .status-btn:active { transform: scale(0.94); }
+  .status-btn.s-new.active      { background: var(--surface3); border-color: var(--border2); color: var(--text-sub); }
+  .status-btn.s-review.active   { background: var(--amber-dim); border-color: var(--amber-border); color: var(--amber); }
+  .status-btn.s-applied.active  { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-light); }
+  .status-btn.s-won.active      { background: var(--green-dim); border-color: var(--green-border); color: var(--green); }
+  .status-btn.s-lost.active     { background: var(--red-dim); border-color: var(--red-border); color: var(--red); }
+
+  /* Logo glitch effect */
+  .logo-glitch {
+    position: relative;
+    display: inline-block;
+  }
+  .logo-glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 2px; top: 0;
+    color: var(--accent-light);
+    clip-path: polygon(0 30%, 100% 30%, 100% 50%, 0 50%);
+    animation: glitch 5s infinite;
+    opacity: 0;
+  }
+  @keyframes glitch {
+    0%,90%,100% { opacity: 0; transform: none; }
+    92% { opacity: 0.6; transform: translateX(-2px); }
+    94% { opacity: 0; }
+    96% { opacity: 0.4; transform: translateX(2px); }
+    98% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="loader" id="loader">
+  <div class="loader-logo">TENDER AGENT</div>
+  <div class="loader-dots"><span></span><span></span><span></span></div>
+</div>
+
+<!-- BETA BANNER -->
+<div class="beta-banner">
+  <div class="beta-dot"></div>
+  <div class="beta-tag">BETA</div>
+  <div class="beta-text">Ранний доступ · AI анализ тендеров</div>
+  <div class="beta-version">v0.9.1</div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-row">
+    <div class="logo">
+      <span class="logo-glitch" data-text="TENDER AGENT">TENDER AGENT</span>
+      <span class="logo-badge">AI</span>
+    </div>
+    <div class="header-right">
+      <!-- Favorites toggle -->
+      <button class="hdr-btn" id="favBtn" onclick="toggleFavView()" title="Избранное">
+        ☆
+        <span class="badge" id="favBadge">0</span>
+      </button>
+      <!-- Refresh -->
+      <button class="hdr-btn" id="refreshBtn" onclick="loadTenders(true)" title="Обновить анализ">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div class="header-rule"></div>
+</div>
+
+<!-- STATS -->
+<div class="stats-wrap hidden-el" id="statsWrap">
+  <div class="stat-tile s-accent">
+    <div class="stat-num" id="sTotal">0</div>
+    <div class="stat-lbl">Всего</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-num" id="sHigh" style="color:var(--green)">0</div>
+    <div class="stat-lbl">≥80%</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-num" id="sApply" style="color:var(--amber)">0</div>
+    <div class="stat-lbl">К подаче</div>
+  </div>
+</div>
+
+<!-- HIGHLIGHT CARD -->
+<div class="highlight-wrap hidden-el" id="highlightWrap">
+  <div class="highlight-card" id="highlightCard" onclick="scrollToTop()">
+    <div class="hl-top">
+      <div class="hl-label">Лучший тендер дня</div>
+      <div class="hl-score" id="hlScore">—</div>
+    </div>
+    <div class="hl-title" id="hlTitle">—</div>
+    <div class="hl-org" id="hlOrg">—</div>
+    <div class="hl-footer">
+      <div class="hl-rec" id="hlRec">—</div>
+      <div class="hl-budget" id="hlBudget">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- SORT BAR -->
+<div class="sort-bar hidden-el" id="sortBar">
+  <span class="sort-label">Сортировка</span>
+  <div class="sort-pills">
+    <button class="sort-pill active" onclick="setSort('match', this)">По релевантности</button>
+    <button class="sort-pill" onclick="setSort('deadline', this)">По дедлайну</button>
+    <button class="sort-pill" onclick="setSort('budget', this)">По бюджету</button>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters-row hidden-el" id="filtersRow">
+  <button class="f-pill active" onclick="setFilter('all', this)">Все</button>
+  <button class="f-pill" onclick="setFilter('high', this)">🟢 ≥ 80%</button>
+  <button class="f-pill" onclick="setFilter('mid', this)">🟡 60–79%</button>
+  <button class="f-pill" onclick="setFilter('apply', this)">✅ Подать</button>
+  <button class="f-pill" onclick="setFilter('consider', this)">👀 Рассмотреть</button>
+</div>
+
+<!-- FAVORITES BANNER -->
+<div class="fav-banner" id="favBanner">
+  ⭐ Показаны сохранённые тендеры
+</div>
+
+<!-- ERROR -->
+<div class="err-bar" id="errBar">⚠ <span id="errMsg">Ошибка загрузки</span></div>
+
+<!-- TIMESTAMP + COUNT -->
+<div class="ts-row hidden-el" id="tsRow">
+  <span class="ts-text" id="tsText"></span>
+  <span class="result-count" id="resultCount"></span>
+</div>
+
+<!-- CARDS -->
+<div class="cards-list" id="cardsList"></div>
+
+<!-- EMPTY -->
+<div class="empty" id="emptyState">
+  <div class="empty-icon">◎</div>
+  <div class="empty-title">Не найдено</div>
+  <div class="empty-desc">Измените фильтр или нажмите кнопку обновления анализа</div>
+</div>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────
+  const GET_URL     = 'https://rizobot.app.n8n.cloud/webhook/tender-list';
+  const REFRESH_URL = 'https://rizobot.app.n8n.cloud/webhook/tender-refresh';
+
+  // ── TELEGRAM ────────────────────────────────────
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0a0a0f'); tg.setBackgroundColor('#0a0a0f'); }
+
+  // ── STATE ────────────────────────────────────────
+  let allTenders = [];
+  let currentFilter = 'all';
+  let currentSort   = 'match';
+  let showFavs      = false;
+  let savedIds      = new Set(JSON.parse(localStorage.getItem('taSaved') || '[]'));
+
+  // ── HELPERS ──────────────────────────────────────
+  const getMatch    = t => t.matchPercent || t['Match %'] || 0;
+  const getTitle    = t => t.title || t['Tender Title'] || 'Без названия';
+  const getOrg      = t => t.organization || t['Organization'] || '—';
+  const getBudget   = t => Number(t.budget || t['Budget'] || 0);
+  const getDeadline = t => t.deadline || t['Deadline'] || '';
+  const getRec      = t => t.recommendation || t['Recommendation'] || '';
+  const getReasoning= t => t.reasoning || t['Reasoning'] || '';
+  const getLink     = t => t.link || t['Link'] || '';
+  const getSource   = t => t.source || t['Source'] || '';
+  const getId       = t => t.id || t.title || t['Tender Title'] || Math.random();
+
+  function daysUntil(dateStr) {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (isNaN(d)) return null;
+    return Math.ceil((d - new Date()) / 86400000);
+  }
+
+  function deadlineColor(days) {
+    if (days === null) return '';
+    if (days <= 5)  return 'deadline-urgent';
+    if (days <= 14) return 'deadline-near';
+    return '';
+  }
+
+  function saveFavs() {
+    localStorage.setItem('taSaved', JSON.stringify([...savedIds]));
+    updateFavBadge();
+  }
+
+  function updateFavBadge() {
+    const badge = document.getElementById('favBadge');
+    badge.textContent = savedIds.size;
+    badge.classList.toggle('show', savedIds.size > 0);
+    document.getElementById('favBtn').classList.toggle('active', showFavs);
+  }
+
+  // ── LOAD ─────────────────────────────────────────
+  async function loadTenders(isRefresh = false) {
+    const btn = document.getElementById('refreshBtn');
+    btn.querySelector('svg').classList.add('spinning');
+    document.getElementById('errBar').classList.remove('show');
+
+    try {
+      const res = await fetch(isRefresh ? REFRESH_URL : GET_URL, {
+        method: isRefresh ? 'POST' : 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        ...(isRefresh && { body: JSON.stringify({ source: 'miniapp' }) })
+      });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      allTenders = data.tenders || (Array.isArray(data) ? data : []);
+    } catch (e) {
+      document.getElementById('errMsg').textContent = 'Не удалось загрузить данные. Показаны демо-данные.';
+      document.getElementById('errBar').classList.add('show');
+      allTenders = getMockData();
+    }
+
+    showUIElements();
+    render();
+    btn.querySelector('svg').classList.remove('spinning');
+    setTimeout(() => document.getElementById('loader').classList.add('hidden'), 600);
+  }
+
+  function showUIElements() {
+    ['statsWrap','sortBar','filtersRow','tsRow'].forEach(id => {
+      document.getElementById(id).classList.remove('hidden-el');
+    });
+    document.getElementById('tsText').textContent =
+      'Обновлено ' + new Date().toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    updateFavBadge();
+    updateHighlight();
+  }
+
+  function updateHighlight() {
+    if (!allTenders.length) return;
+    const best = [...allTenders].sort((a,b) => getMatch(b) - getMatch(a))[0];
+    if (!best) return;
+    document.getElementById('highlightWrap').classList.remove('hidden-el');
+    document.getElementById('hlScore').textContent = getMatch(best) + '%';
+    document.getElementById('hlTitle').textContent = getTitle(best);
+    document.getElementById('hlOrg').textContent = getOrg(best);
+    const rec = getRec(best) || 'Рассмотреть';
+    const hlRec = document.getElementById('hlRec');
+    hlRec.textContent = rec;
+    hlRec.className = 'hl-rec ' + (rec === 'Подать заявку' ? 'hl-apply' : rec === 'Рассмотреть' ? 'hl-consider' : 'hl-skip');
+    const budget = getBudget(best);
+    document.getElementById('hlBudget').textContent = budget > 0 ? budget.toLocaleString('ru-RU') + ' UZS' : '';
+    // Click scrolls to best card and opens it
+    document.getElementById('highlightCard').onclick = () => {
+      const safeId = String(getId(best)).replace(/[^a-z0-9]/gi,'_');
+      const card = document.getElementById('card_' + safeId);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => toggleCard(safeId), 400);
+      }
+    };
+  }
+
+  // ── FILTER / SORT ────────────────────────────────
+  function setFilter(f, btn) {
+    currentFilter = f;
+    showFavs = false;
+    document.querySelectorAll('.f-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('favBanner').classList.remove('show');
+    document.getElementById('favBtn').classList.remove('active');
+    render();
+  }
+
+  function setSort(s, btn) {
+    currentSort = s;
+    document.querySelectorAll('.sort-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  }
+
+  function toggleFavView() {
+    showFavs = !showFavs;
+    document.getElementById('favBanner').classList.toggle('show', showFavs);
+    document.getElementById('favBtn').classList.toggle('active', showFavs);
+    render();
+  }
+
+  function render() {
+    let list = [...allTenders];
+
+    // Favs view
+    if (showFavs) list = list.filter(t => savedIds.has(String(getId(t))));
+
+    // Filter
+    if (!showFavs) {
+      if (currentFilter === 'high')    list = list.filter(t => getMatch(t) >= 80);
+      else if (currentFilter === 'mid') list = list.filter(t => getMatch(t) >= 60 && getMatch(t) < 80);
+      else if (currentFilter === 'apply')   list = list.filter(t => getRec(t) === 'Подать заявку');
+      else if (currentFilter === 'consider') list = list.filter(t => getRec(t) === 'Рассмотреть');
+    }
+
+    // Sort
+    if (currentSort === 'match') list.sort((a,b) => getMatch(b) - getMatch(a));
+    else if (currentSort === 'deadline') {
+      list.sort((a,b) => {
+        const da = daysUntil(getDeadline(a)) ?? 9999;
+        const db = daysUntil(getDeadline(b)) ?? 9999;
+        return da - db;
+      });
+    } else if (currentSort === 'budget') list.sort((a,b) => getBudget(b) - getBudget(a));
+
+    // Stats (always from all)
+    document.getElementById('sTotal').textContent = allTenders.length;
+    document.getElementById('sHigh').textContent  = allTenders.filter(t => getMatch(t) >= 80).length;
+    document.getElementById('sApply').textContent = allTenders.filter(t => getRec(t) === 'Подать заявку').length;
+    document.getElementById('resultCount').textContent = list.length + ' тендеров';
+
+    const container = document.getElementById('cardsList');
+    const empty     = document.getElementById('emptyState');
+
+    if (!list.length) {
+      container.innerHTML = '';
+      empty.classList.add('show');
+      return;
+    }
+    empty.classList.remove('show');
+    container.innerHTML = list.map((t, i) => buildCard(t, i)).join('');
+
+    // Animate match bars after render
+    setTimeout(() => {
+      document.querySelectorAll('.match-fill').forEach(el => {
+        el.style.width = el.dataset.w + '%';
+      });
+      applySavedStatuses();
+    }, 50);
+  }
+
+  // ── BUILD CARD ───────────────────────────────────
+  function buildCard(t, idx) {
+    const match    = getMatch(t);
+    const title    = getTitle(t);
+    const org      = getOrg(t);
+    const budget   = getBudget(t);
+    const deadline = getDeadline(t);
+    const rec      = getRec(t);
+    const reasoning= getReasoning(t);
+    const link     = getLink(t);
+    const source   = getSource(t);
+    const id       = String(getId(t));
+    const isSaved  = savedIds.has(id);
+    const days     = daysUntil(deadline);
+
+    // Colors
+    const stripCls = match >= 80 ? 'strip-high' : match >= 60 ? 'strip-mid' : 'strip-low';
+    const ringCls  = match >= 80 ? 'ring-high'  : match >= 60 ? 'ring-mid'  : 'ring-low';
+    const matchColor = match >= 80 ? 'var(--green)' : match >= 60 ? 'var(--amber)' : 'var(--red)';
+    const recCls   = rec === 'Подать заявку' ? 'rec-apply' : rec === 'Рассмотреть' ? 'rec-consider' : 'rec-skip';
+
+    // Deadline chip
+    const dlColor  = deadlineColor(days);
+    const dlText   = days !== null
+      ? (days <= 0 ? '⚠ Истёк' : days <= 5 ? `⚡ ${days}д` : `⏰ ${deadline}`)
+      : '';
+
+    // Budget
+    const budgetStr = budget > 0
+      ? '💰 ' + budget.toLocaleString('ru-RU') + ' UZS'
+      : '';
+
+    return `
+    <div class="tcard" style="animation-delay:${idx*0.06}s" id="card_${id.replace(/[^a-z0-9]/gi,'_')}">
+      <div class="tcard-strip ${stripCls}"></div>
+      <div class="tcard-head" onclick="toggleCard('${id.replace(/[^a-z0-9]/gi,'_')}')">
+        <div class="score-ring ${ringCls}">
+          <span class="ring-num">${match}</span>
+          <span class="ring-pct">%</span>
+        </div>
+        <div class="tcard-info">
+          <div class="tcard-title">${title}</div>
+          <div class="tcard-org">${org}</div>
+        </div>
+        <div class="tcard-chevron">▾</div>
+      </div>
+
+      <div class="tcard-meta">
+        ${budgetStr ? `<div class="m-chip">${budgetStr}</div>` : ''}
+        ${dlText    ? `<div class="m-chip ${dlColor}">${dlText}</div>` : ''}
+        ${source    ? `<div class="m-chip">📌 ${source}</div>` : ''}
+      </div>
+
+      <div class="tcard-body">
+
+        <!-- Match bar -->
+        <div class="match-bar-wrap">
+          <div class="match-bar-top">
+            <span class="match-bar-label">Соответствие профилю</span>
+            <span class="match-bar-val" style="color:${matchColor}">${match}%</span>
+          </div>
+          <div class="match-track">
+            <div class="match-fill" data-w="${match}" style="width:0%;background:${matchColor}"></div>
+          </div>
+        </div>
+
+        <!-- Reasoning -->
+        ${reasoning ? `
+        <div class="reasoning-box">
+          <div class="box-label">AI Анализ</div>
+          <div class="reasoning-text">${reasoning}</div>
+        </div>` : ''}
+
+        <!-- Details grid -->
+        <div class="details-grid">
+          <div class="detail-item">
+            <div class="detail-key">Организация</div>
+            <div class="detail-val">${org}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-key">Бюджет</div>
+            <div class="detail-val">${budget > 0 ? budget.toLocaleString('ru-RU') + ' UZS' : 'Не указан'}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-key">Дедлайн</div>
+            <div class="detail-val ${days !== null && days <= 5 ? 'red' : days !== null && days <= 14 ? 'amber' : ''}">${deadline || 'Не указан'}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-key">Осталось дней</div>
+            <div class="detail-val ${days !== null && days <= 5 ? 'red' : days !== null && days <= 14 ? 'amber' : 'green'}">${days !== null ? (days <= 0 ? 'Истёк' : days + ' дн.') : '—'}</div>
+          </div>
+        </div>
+
+        <!-- Recommendation -->
+        <div class="rec-wrap">
+          <div class="box-label" style="margin:0;font-size:9px;letter-spacing:2px;color:var(--text-muted)">РЕКОМЕНДАЦИЯ</div>
+          ${rec ? `<div class="rec-badge ${recCls}">${rec}</div>` : ''}
+        </div>
+
+        <!-- Status tracker -->
+        <div class="box-label" style="margin-bottom:6px;font-size:9px">Статус работы с тендером</div>
+        <div class="status-row">
+          <button class="status-btn s-new active" id="st_new_${id.replace(/[^a-z0-9]/gi,'_')}" onclick="setStatus('${id}','new','${id.replace(/[^a-z0-9]/gi,'_')}')">Новый</button>
+          <button class="status-btn s-review" id="st_review_${id.replace(/[^a-z0-9]/gi,'_')}" onclick="setStatus('${id}','review','${id.replace(/[^a-z0-9]/gi,'_')}')">Изучаем</button>
+          <button class="status-btn s-applied" id="st_applied_${id.replace(/[^a-z0-9]/gi,'_')}" onclick="setStatus('${id}','applied','${id.replace(/[^a-z0-9]/gi,'_')}')">Подали</button>
+          <button class="status-btn s-won" id="st_won_${id.replace(/[^a-z0-9]/gi,'_')}" onclick="setStatus('${id}','won','${id.replace(/[^a-z0-9]/gi,'_')}')">Победа</button>
+          <button class="status-btn s-lost" id="st_lost_${id.replace(/[^a-z0-9]/gi,'_')}" onclick="setStatus('${id}','lost','${id.replace(/[^a-z0-9]/gi,'_')}')">Отказ</button>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="action-row">
+          <button class="act-btn ${isSaved ? 'saved' : ''}" id="savebtn_${id.replace(/[^a-z0-9]/gi,'_')}" onclick="toggleSave('${id}', '${id.replace(/[^a-z0-9]/gi,'_')}')">
+            ${isSaved ? '⭐ Сохранено' : '☆ Сохранить'}
+          </button>
+          <button class="act-btn" id="rebtn_${id.replace(/[^a-z0-9]/gi,'_')}" onclick="reanalyze('${id.replace(/[^a-z0-9]/gi,'_')}')">
+            🔄 Обновить анализ
+          </button>
+          ${link ? `<a class="act-btn-open" href="${link}" target="_blank">Открыть ↗</a>` : ''}
+        </div>
+
+      </div>
+    </div>`;
+  }
+
+  // ── INTERACTIONS ─────────────────────────────────
+  function toggleCard(safeId) {
+    const card = document.getElementById('card_' + safeId);
+    if (!card) return;
+    const wasOpen = card.classList.contains('open');
+    document.querySelectorAll('.tcard.open').forEach(c => c.classList.remove('open'));
+    if (!wasOpen) {
+      card.classList.add('open');
+      // Animate bar
+      setTimeout(() => {
+        const fill = card.querySelector('.match-fill');
+        if (fill) fill.style.width = fill.dataset.w + '%';
+      }, 50);
+    }
+  }
+
+  function toggleSave(id, safeId) {
+    const btn = document.getElementById('savebtn_' + safeId);
+    if (savedIds.has(id)) {
+      savedIds.delete(id);
+      if (btn) { btn.textContent = '☆ Сохранить'; btn.classList.remove('saved'); }
+    } else {
+      savedIds.add(id);
+      if (btn) { btn.textContent = '⭐ Сохранено'; btn.classList.add('saved'); }
+    }
+    saveFavs();
+    if (showFavs) render();
+  }
+
+  // Status tracker — persisted in localStorage
+  const statusMap = JSON.parse(localStorage.getItem('taStatus') || '{}');
+  const statusTypes = ['new','review','applied','won','lost'];
+
+  function setStatus(id, status, safeId) {
+    statusMap[id] = status;
+    localStorage.setItem('taStatus', JSON.stringify(statusMap));
+    // Update buttons UI
+    statusTypes.forEach(s => {
+      const btn = document.getElementById(`st_${s}_${safeId}`);
+      if (btn) btn.classList.remove('active');
+    });
+    const active = document.getElementById(`st_${status}_${safeId}`);
+    if (active) active.classList.add('active');
+  }
+
+  // Apply saved statuses after render
+  function applySavedStatuses() {
+    Object.entries(statusMap).forEach(([id, status]) => {
+      const safeId = id.replace(/[^a-z0-9]/gi,'_');
+      statusTypes.forEach(s => {
+        const btn = document.getElementById(`st_${s}_${safeId}`);
+        if (btn) btn.classList.remove('active');
+      });
+      const active = document.getElementById(`st_${status}_${safeId}`);
+      if (active) active.classList.add('active');
+    });
+  }
+
+  async function reanalyze(safeId) {
+    const btn = document.getElementById('rebtn_' + safeId);
+    if (!btn) return;
+    btn.classList.add('refreshing');
+    btn.textContent = '⏳ Анализирую...';
+    try {
+      const res = await fetch(REFRESH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'card_reanalyze', cardId: safeId })
+      });
+      if (res.ok) {
+        btn.textContent = '✅ Обновлено';
+        setTimeout(() => {
+          btn.classList.remove('refreshing');
+          btn.textContent = '🔄 Обновить анализ';
+        }, 2000);
+        // Reload data
+        setTimeout(() => loadTenders(false), 2500);
+      } else throw new Error();
+    } catch {
+      btn.classList.remove('refreshing');
+      btn.textContent = '🔄 Обновить анализ';
+    }
+  }
+
+  // ── MOCK DATA ────────────────────────────────────
+  function getMockData() {
+    return [
+      { id:'t1', title:'Оказание юридических услуг по корпоративному праву', organization:'АО "Узбекэнерго"', budget:45000000, deadline:'2026-05-15', matchPercent:92, reasoning:'Полное соответствие профилю фирмы — корпоративное право является основной специализацией. Бюджет в допустимом диапазоне, организация-заказчик является крупным государственным предприятием.', recommendation:'Подать заявку', link:'https://etender.uzex.uz', source:'etender.uzex.uz' },
+      { id:'t2', title:'Правовое сопровождение сделок M&A', organization:'Министерство инвестиций РУз', budget:120000000, deadline:'2026-05-20', matchPercent:88, reasoning:'M&A advisory — ключевое направление фирмы. Государственный заказчик обеспечивает высокую надёжность. Высокий бюджет оправдан сложностью задачи.', recommendation:'Подать заявку', link:'https://etender.uzex.uz', source:'etender.uzex.uz' },
+      { id:'t3', title:'Юридическая экспертиза договоров и контрактов', organization:'ООО "Silk Road Group"', budget:28000000, deadline:'2026-05-10', matchPercent:85, reasoning:'Составление и экспертиза договоров входит в базовые компетенции фирмы. Коммерческий заказчик, реалистичные сроки исполнения.', recommendation:'Подать заявку', link:'https://etender.uzex.uz', source:'etender.uzex.uz' },
+      { id:'t4', title:'Комплаенс-аудит и due diligence', organization:'АКБ "Капиталбанк"', budget:75000000, deadline:'2026-05-30', matchPercent:80, reasoning:'Compliance и due diligence являются сильной стороной фирмы. Банковский сектор требует специфической экспертизы, которая у фирмы имеется.', recommendation:'Подать заявку', link:'https://etender.uzex.uz', source:'etender.uzex.uz' },
+      { id:'t5', title:'Представление интересов в арбитраже', organization:'ГУП "Узавтойул"', budget:55000000, deadline:'2026-05-25', matchPercent:75, reasoning:'Разрешение споров соответствует профилю фирмы, однако данный тендер требует специализации в транспортном праве — рекомендуется оценить наличие соответствующей экспертизы в команде.', recommendation:'Рассмотреть', link:'https://etender.uzex.uz', source:'etender.uzex.uz' },
+      { id:'t6', title:'Консультации по регуляторному праву', organization:'Агентство по развитию рынка капитала', budget:35000000, deadline:'2026-06-01', matchPercent:68, reasoning:'Частичное совпадение — регуляторный аспект юридического консалтинга присутствует, но не является основным направлением. Стоит оценить загруженность команды перед подачей.', recommendation:'Рассмотреть', link:'https://etender.uzex.uz', source:'etender.uzex.uz' }
+    ];
+  }
+
+  // ── INIT ─────────────────────────────────────────
+  loadTenders();
+</script>
+</body>
+</html>
