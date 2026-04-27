@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tender Agent</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface2: #1a1a1a;
+  --surface3: #222222;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --text: #ffffff;
+  --text2: #aaaaaa;
+  --text3: #555555;
+  --accent: #ffffff;
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.08);
+  --yellow: #eab308;
+  --yellow-dim: rgba(234,179,8,0.08);
+  --red: #ef4444;
+  --red-dim: rgba(239,68,68,0.08);
+}
+
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* LOADER */
+#loader {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 999; gap: 20px;
+  transition: opacity 0.4s ease;
+}
+#loader.gone { opacity: 0; pointer-events: none; }
+.loader-wordmark { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 8px; color: white; }
+.loader-sub { font-size: 11px; color: var(--text3); letter-spacing: 3px; text-transform: uppercase; }
+.loader-line { width: 100px; height: 1px; background: var(--surface3); overflow: hidden; }
+.loader-progress { height: 100%; background: white; animation: prog 1.4s ease-in-out infinite; }
+@keyframes prog { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
+
+/* HEADER */
+.header {
+  padding: 16px 20px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(10,10,10,0.95);
+  backdrop-filter: blur(20px);
+}
+.wordmark { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 4px; color: white; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.last-update { font-size: 10px; color: var(--text3); }
+.refresh-btn {
+  width: 30px; height: 30px; border-radius: 6px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text2); font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.15s;
+}
+.refresh-btn:active { background: white; color: black; }
+.refresh-btn.spinning { animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(10,10,10,0.97);
+  border-top: 1px solid var(--border);
+  display: flex; z-index: 20;
+  backdrop-filter: blur(20px);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-btn {
+  flex: 1; padding: 12px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer; transition: all 0.15s;
+  background: none; border: none;
+  color: var(--text3); font-family: 'Space Grotesk', sans-serif;
+}
+.nav-btn.active { color: white; }
+.nav-btn-icon { font-size: 18px; line-height: 1; }
+.nav-btn-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 500; }
+
+/* SCREENS */
+.screen { display: none; padding-bottom: 80px; }
+.screen.active { display: block; }
+
+/* DASHBOARD */
+.dashboard { padding: 20px 20px 0; }
+.dash-label { font-size: 10px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+.dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+.dash-stat { background: var(--surface); padding: 14px 12px; }
+.dash-num { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; color: white; }
+.dash-num.green { color: var(--green); }
+.dash-label2 { font-size: 10px; color: var(--text3); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.divider { height: 1px; background: var(--border); margin: 0 20px; }
+
+.filters-wrap { padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
+.filters { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.filters::-webkit-scrollbar { display: none; }
+.filter-btn {
+  flex-shrink: 0; padding: 5px 11px; border-radius: 5px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--text3); font-size: 11px; font-family: 'Space Grotesk', sans-serif;
+  font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.filter-btn.active { background: white; color: black; border-color: white; }
+.filter-btn:not(.active):hover { color: var(--text2); border-color: var(--border2); }
+.count-badge { font-size: 10px; color: var(--text3); white-space: nowrap; }
+
+/* CARDS */
+.cards { padding: 0 20px 16px; display: flex; flex-direction: column; gap: 1px; }
+.card {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+  animation: fadeIn 0.25s ease both;
+}
+.card:first-child { border-top: 1px solid var(--border); border-radius: 8px 8px 0 0; }
+.card:last-child { border-bottom: 1px solid var(--border); border-radius: 0 0 8px 8px; }
+.card:only-child { border: 1px solid var(--border); border-radius: 8px; }
+.card:active { background: var(--surface2); }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+.card-top { display: flex; align-items: flex-start; gap: 12px; }
+.card-score {
+  flex-shrink: 0; width: 42px; height: 42px; border-radius: 8px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--surface2);
+}
+.card-score-num { font-family: 'Bebas Neue', sans-serif; font-size: 18px; line-height: 1; }
+.card-score-num.high { color: var(--green); }
+.card-score-num.mid  { color: var(--yellow); }
+.card-score-num.low  { color: var(--red); }
+.card-score-pct { font-size: 7px; color: var(--text3); }
+.card-info { flex: 1; min-width: 0; }
+.card-title { font-size: 13px; font-weight: 600; line-height: 1.35; color: white; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-org { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+.card-pills { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.pill { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 500; }
+.pill-submit  { background: var(--green-dim); color: var(--green); }
+.pill-consider{ background: var(--yellow-dim); color: var(--yellow); }
+.pill-skip    { background: var(--red-dim); color: var(--red); }
+.pill-meta    { background: var(--surface2); color: var(--text3); }
+.card-chevron { flex-shrink: 0; color: var(--text3); font-size: 12px; margin-top: 14px; }
+
+.empty { text-align: center; padding: 60px 20px; display: none; flex-direction: column; align-items: center; gap: 10px; }
+.empty.show { display: flex; }
+.empty-icon { font-size: 32px; opacity: 0.2; }
+.empty-text { color: var(--text3); font-size: 13px; line-height: 1.6; }
+
+/* BOTTOM SHEET */
+.sheet-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  z-index: 100; opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease;
+  backdrop-filter: blur(4px);
+}
+.sheet-overlay.open { opacity: 1; pointer-events: all; }
+.sheet {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  z-index: 101;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.sheet.open { transform: translateY(0); }
+.sheet-handle { width: 36px; height: 4px; background: var(--surface3); border-radius: 2px; margin: 12px auto 0; }
+.sheet-body { padding: 20px 20px 40px; }
+
+.sheet-score-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.sheet-score-circle {
+  width: 64px; height: 64px; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 1px solid; flex-shrink: 0;
+}
+.sheet-score-circle.high { border-color: var(--green); background: var(--green-dim); }
+.sheet-score-circle.mid  { border-color: var(--yellow); background: var(--yellow-dim); }
+.sheet-score-circle.low  { border-color: var(--red); background: var(--red-dim); }
+.sheet-score-num { font-family: 'Bebas Neue', sans-serif; font-size: 26px; line-height: 1; }
+.sheet-score-num.high { color: var(--green); }
+.sheet-score-num.mid  { color: var(--yellow); }
+.sheet-score-num.low  { color: var(--red); }
+.sheet-score-label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+.sheet-title { font-size: 15px; font-weight: 700; line-height: 1.4; color: white; margin-bottom: 4px; }
+.sheet-org { font-size: 12px; color: var(--text3); }
+.sheet-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+.sheet-meta-tag { font-size: 11px; color: var(--text2); background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 4px 9px; }
+.sheet-criteria { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+.criterion { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.criterion-top { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.criterion-name { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+.criterion-val { font-size: 11px; font-weight: 700; }
+.criterion-track { height: 2px; background: var(--surface3); border-radius: 1px; overflow: hidden; }
+.criterion-fill { height: 100%; border-radius: 1px; }
+.sheet-sections { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.ai-block { border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.ai-block-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 7px; }
+.ai-block.why  .ai-block-label { color: var(--green); }
+.ai-block.risk .ai-block-label { color: var(--yellow); }
+.ai-block.plan .ai-block-label { color: white; }
+.ai-block-text { font-size: 12px; line-height: 1.65; color: var(--text2); }
+.sheet-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+.badge { font-size: 10px; font-weight: 600; padding: 5px 10px; border-radius: 5px; }
+.badge-submit  { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+.badge-consider{ background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(234,179,8,0.2); }
+.badge-skip    { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+.badge-risk    { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.badge-profit  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.open-tender-btn {
+  width: 100%; padding: 14px;
+  background: white; color: black;
+  border: none; border-radius: 8px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: opacity 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.open-tender-btn:active { opacity: 0.8; }
+.open-tender-btn.disabled { background: var(--surface2); color: var(--text3); cursor: default; }
+
+/* ===================== PROFILE SCREEN ===================== */
+.profile-screen { padding: 20px 20px 0; }
+
+.profile-header { margin-bottom: 24px; }
+.profile-title { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; margin-bottom: 4px; }
+.profile-sub { font-size: 11px; color: var(--text3); }
+
+.profile-section { margin-bottom: 24px; }
+.profile-section-label {
+  font-size: 9px; color: var(--text3); text-transform: uppercase;
+  letter-spacing: 2px; margin-bottom: 10px; font-weight: 600;
+}
+
+.field-group { display: flex; flex-direction: column; gap: 8px; }
+
+.field-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 14px;
+}
+.field-label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.field-input {
+  width: 100%; background: none; border: none; outline: none;
+  color: white; font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px; font-weight: 500; resize: none;
+  caret-color: white;
+}
+.field-input::placeholder { color: var(--text3); }
+.field-input.textarea { min-height: 60px; line-height: 1.5; }
+
+.field-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.save-profile-btn {
+  width: 100%; padding: 15px;
+  background: white; color: black;
+  border: none; border-radius: 8px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.15s;
+  margin-top: 8px; margin-bottom: 24px;
+  letter-spacing: 0.5px;
+}
+.save-profile-btn:active { opacity: 0.8; }
+.save-profile-btn.saving { opacity: 0.6; }
+
+.profile-status {
+  text-align: center; font-size: 11px; color: var(--text3);
+  margin-bottom: 20px; display: none;
+}
+.profile-status.show { display: block; }
+.profile-status.success { color: var(--green); }
+.profile-status.error { color: var(--red); }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 90px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: white; color: black;
+  padding: 9px 18px; border-radius: 6px;
+  font-size: 12px; font-weight: 500; z-index: 200;
+  transition: transform 0.25s ease; white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="loader-wordmark">TENDER AGENT</div>
+  <div class="loader-sub">AI · Analysis</div>
+  <div class="loader-line"><div class="loader-progress"></div></div>
+</div>
+
+<div class="header">
+  <div class="wordmark">TENDER AGENT</div>
+  <div class="header-right">
+    <div class="last-update" id="lastUpdate"></div>
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshTenders()">↻</button>
+  </div>
+</div>
+
+<!-- SCREEN: TENDERS -->
+<div class="screen active" id="screenTenders">
+  <div class="dashboard">
+    <div class="dash-label">Обзор · сегодня</div>
+    <div class="dash-stats">
+      <div class="dash-stat"><div class="dash-num" id="dTotal">—</div><div class="dash-label2">Найдено</div></div>
+      <div class="dash-stat"><div class="dash-num green" id="dSubmit">—</div><div class="dash-label2">К подаче</div></div>
+      <div class="dash-stat"><div class="dash-num" id="dAvg">—</div><div class="dash-label2">Ср. балл</div></div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="filters-wrap">
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all',this)">Все</button>
+      <button class="filter-btn" onclick="setFilter('high',this)">≥70%</button>
+      <button class="filter-btn" onclick="setFilter('submit',this)">Подать</button>
+      <button class="filter-btn" onclick="setFilter('consider',this)">Рассмотреть</button>
+    </div>
+    <div class="count-badge" id="countBadge"></div>
+  </div>
+  <div class="cards" id="cardsContainer"></div>
+  <div class="empty" id="emptyState">
+    <div class="empty-icon">○</div>
+    <div class="empty-text">Тендеров не найдено.<br>Нажми ↻ чтобы запустить поиск.</div>
+  </div>
+</div>
+
+<!-- SCREEN: PROFILE -->
+<div class="screen" id="screenProfile">
+  <div class="profile-screen">
+    <div class="profile-header">
+      <div class="profile-title">ПРОФИЛЬ КОМПАНИИ</div>
+      <div class="profile-sub">AI анализирует тендеры на основе этих данных</div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-section-label">Основное</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-label">Название компании</div>
+          <input class="field-input" id="f-company-name" placeholder="Введите название" type="text">
+        </div>
+        <div class="field-row">
+          <div class="field-label">Локация</div>
+          <input class="field-input" id="f-location" placeholder="Tashkent, Uzbekistan" type="text">
+        </div>
+        <div class="field-row">
+          <div class="field-label">Языки</div>
+          <input class="field-input" id="f-languages" placeholder="Russian, Uzbek, English" type="text">
+        </div>
+        <div class="field-row-2">
+          <div class="field-row">
+            <div class="field-label">Лет опыта</div>
+            <input class="field-input" id="f-exp-years" placeholder="8" type="number">
+          </div>
+          <div class="field-row">
+            <div class="field-label">Размер команды</div>
+            <input class="field-input" id="f-team-size" placeholder="15" type="number">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-section-label">Услуги и опыт</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-label">Услуги</div>
+          <textarea class="field-input textarea" id="f-services" placeholder="Financial consulting, audit, strategy, ESG, feasibility..."></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field-label">Ключевые слова для поиска тендеров</div>
+          <input class="field-input" id="f-keywords" placeholder="аудит, финансы, бухгалтерия, ESG...">
+        </div>
+        <div class="field-row">
+          <div class="field-label">Предыдущие проекты</div>
+          <textarea class="field-input textarea" id="f-prev-projects" placeholder="Опишите 3 релевантных проекта..."></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field-label">Релевантный опыт</div>
+          <textarea class="field-input textarea" id="f-rel-exp" placeholder="Опыт в аудите, МСФО, финансовой отчётности..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-section-label">Финансы и условия</div>
+      <div class="field-group">
+        <div class="field-row-2">
+          <div class="field-row">
+            <div class="field-label">Мин. контракт (UZS)</div>
+            <input class="field-input" id="f-min-contract" placeholder="5,000,000" type="text">
+          </div>
+          <div class="field-row">
+            <div class="field-label">Макс. контракт (UZS)</div>
+            <input class="field-input" id="f-max-contract" placeholder="500,000,000" type="text">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-section-label">Статистика и достижения</div>
+      <div class="field-group">
+        <div class="field-row-2">
+          <div class="field-row">
+            <div class="field-label">Всего заявок</div>
+            <input class="field-input" id="f-total-bids" placeholder="0" type="number">
+          </div>
+          <div class="field-row">
+            <div class="field-label">Побед</div>
+            <input class="field-input" id="f-total-wins" placeholder="0" type="number">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-label">Вовремя сдача (%)</div>
+          <input class="field-input" id="f-on-time" placeholder="95" type="number">
+        </div>
+        <div class="field-row">
+          <div class="field-label">Сертификаты</div>
+          <input class="field-input" id="f-certifications" placeholder="ISO 9001, CPA...">
+        </div>
+        <div class="field-row">
+          <div class="field-label">Награды</div>
+          <input class="field-input" id="f-awards" placeholder="Best Audit Firm 2024...">
+        </div>
+        <div class="field-row">
+          <div class="field-label">Ключевые члены команды</div>
+          <textarea class="field-input textarea" id="f-team-members" placeholder="CEO: Иванов И.И. — 15 лет в аудите..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-status" id="profileStatus"></div>
+    <button class="save-profile-btn" id="saveBtn" onclick="saveProfile()">Сохранить профиль</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-btn active" id="navTenders" onclick="switchScreen('tenders')">
+    <div class="nav-btn-icon">⚡</div>
+    <div class="nav-btn-label">Тендеры</div>
+  </button>
+  <button class="nav-btn" id="navProfile" onclick="switchScreen('profile')">
+    <div class="nav-btn-icon">◎</div>
+    <div class="nav-btn-label">Профиль</div>
+  </button>
+</div>
+
+<!-- Bottom Sheet -->
+<div class="sheet-overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-body" id="sheetBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const GET_URL      = 'https://solura.app.n8n.cloud/webhook/get-tenders';
+const REFRESH_URL  = 'https://solura.app.n8n.cloud/webhook/tender-refresh';
+const PROFILE_URL  = 'https://solura.app.n8n.cloud/webhook/save-profile';
+
+let allTenders = [];
+let currentFilter = 'all';
+
+if (window.Telegram?.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
+
+// ── SCREEN SWITCHING ──
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (name === 'tenders') {
+    document.getElementById('screenTenders').classList.add('active');
+    document.getElementById('navTenders').classList.add('active');
+    document.getElementById('refreshBtn').style.display = 'flex';
+  } else {
+    document.getElementById('screenProfile').classList.add('active');
+    document.getElementById('navProfile').classList.add('active');
+    document.getElementById('refreshBtn').style.display = 'none';
+    loadProfile();
+  }
+}
+
+// ── UTILS ──
+function openLink(url) {
+  if (!url) return;
+  const full = url.startsWith('http') ? url : 'https://' + url;
+  if (window.Telegram?.WebApp?.openLink) Telegram.WebApp.openLink(full);
+  else window.open(full, '_blank');
+}
+
+function showToast(msg, ms = 2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function sc(v) { return v >= 70 ? 'high' : v >= 40 ? 'mid' : 'low'; }
+function cc(v) { return v >= 70 ? 'var(--green)' : v >= 40 ? 'var(--yellow)' : 'var(--red)'; }
+
+function recPill(r) {
+  if (!r) return '';
+  if (r.includes('Подать')) return '<span class="pill pill-submit">Подать заявку</span>';
+  if (r.includes('Рассмотреть')) return '<span class="pill pill-consider">Рассмотреть</span>';
+  return '<span class="pill pill-skip">Пропустить</span>';
+}
+
+function recBadge(r) {
+  if (!r) return '';
+  if (r.includes('Подать')) return '<span class="badge badge-submit">✓ Подать заявку</span>';
+  if (r.includes('Рассмотреть')) return '<span class="badge badge-consider">◎ Рассмотреть</span>';
+  return '<span class="badge badge-skip">✕ Пропустить</span>';
+}
+
+// ── BOTTOM SHEET ──
+function openSheet(t) {
+  const pct = t.matchPercent || 0;
+  const s = sc(pct);
+  const source = t.source || '';
+  const fullSource = source ? (source.startsWith('http') ? source : 'https://' + source) : '';
+  const criteria = [
+    { name: 'Соответствие', val: t.compliance || 0 },
+    { name: 'Финансы',      val: t.financial  || 0 },
+    { name: 'Реализация',   val: t.feasibility|| 0 },
+    { name: 'Шанс победы',  val: t.winChance  || 0 },
+  ];
+
+  document.getElementById('sheetBody').innerHTML =
+    '<div class="sheet-score-row">' +
+      '<div class="sheet-score-circle ' + s + '">' +
+        '<div class="sheet-score-num ' + s + '">' + pct + '</div>' +
+        '<div class="sheet-score-label">балл</div>' +
+      '</div>' +
+      '<div><div class="sheet-title">' + (t.title||'') + '</div><div class="sheet-org">' + (t.organization||'') + '</div></div>' +
+    '</div>' +
+    ((t.budget||t.deadline) ? '<div class="sheet-meta">' + (t.budget?'<span class="sheet-meta-tag">💰 '+t.budget+'</span>':'') + (t.deadline?'<span class="sheet-meta-tag">📅 '+t.deadline+'</span>':'') + '</div>' : '') +
+    '<div class="sheet-criteria">' + criteria.map(c => {
+      const col = cc(c.val);
+      return '<div class="criterion"><div class="criterion-top"><span class="criterion-name">'+c.name+'</span><span class="criterion-val" style="color:'+col+'">'+c.val+'%</span></div><div class="criterion-track"><div class="criterion-fill" style="width:'+c.val+'%;background:'+col+'"></div></div></div>';
+    }).join('') + '</div>' +
+    '<div class="sheet-sections">' +
+      (t.whyParticipate ? '<div class="ai-block why"><div class="ai-block-label">✓ Почему участвовать</div><div class="ai-block-text">'+t.whyParticipate+'</div></div>' : '') +
+      (t.risks ? '<div class="ai-block risk"><div class="ai-block-label">⚠ Риски</div><div class="ai-block-text">'+t.risks+'</div></div>' : '') +
+      (t.actionPlan ? '<div class="ai-block plan"><div class="ai-block-label">→ План действий</div><div class="ai-block-text">'+t.actionPlan+'</div></div>' : '') +
+      (!t.whyParticipate && !t.risks && !t.actionPlan && t.reasoning ? '<div class="ai-block why"><div class="ai-block-label">AI Анализ</div><div class="ai-block-text">'+t.reasoning+'</div></div>' : '') +
+    '</div>' +
+    '<div class="sheet-badges">' + recBadge(t.recommendation) + (t.riskLevel?'<span class="badge badge-risk">⚡ '+t.riskLevel+'</span>':'') + (t.profitPotential?'<span class="badge badge-profit">📈 '+t.profitPotential+'</span>':'') + '</div>' +
+    (fullSource ? '<button class="open-tender-btn" onclick="openLink(\''+fullSource+'\')">🔗 Открыть тендер</button>' : '<button class="open-tender-btn disabled">Ссылка недоступна</button>');
+
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('sheet').classList.add('open');
+}
+
+function closeSheet() {
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('sheet').classList.remove('open');
+}
+
+// ── TENDERS ──
+function renderCards() {
+  const container = document.getElementById('cardsContainer');
+  const empty = document.getElementById('emptyState');
+  const badge = document.getElementById('countBadge');
+
+  let f = [...allTenders];
+  if (currentFilter === 'high')    f = f.filter(t => (t.matchPercent||0) >= 70);
+  if (currentFilter === 'submit')  f = f.filter(t => (t.recommendation||'').includes('Подать'));
+  if (currentFilter === 'consider')f = f.filter(t => (t.recommendation||'').includes('Рассмотреть'));
+  f.sort((a,b) => (b.matchPercent||0) - (a.matchPercent||0));
+
+  badge.textContent = f.length + ' тендер' + (f.length===1?'':f.length<5?'а':'ов');
+  if (!f.length) { container.innerHTML = ''; empty.classList.add('show'); return; }
+  empty.classList.remove('show');
+
+  container.innerHTML = f.map((t, i) => {
+    const pct = t.matchPercent || 0;
+    const s = sc(pct);
+    return '<div class="card" style="animation-delay:'+(i*0.04)+'s" onclick="openSheet(allTenders['+allTenders.indexOf(t)+'])">' +
+      '<div class="card-top">' +
+        '<div class="card-score"><div class="card-score-num '+s+'">'+pct+'</div><div class="card-score-pct">%</div></div>' +
+        '<div class="card-info">' +
+          '<div class="card-title">'+(t.title||'Без названия')+'</div>' +
+          '<div class="card-org">'+(t.organization||'—')+'</div>' +
+          '<div class="card-pills">'+recPill(t.recommendation)+(t.budget?'<span class="pill pill-meta">'+t.budget+'</span>':'')+(t.deadline?'<span class="pill pill-meta">до '+t.deadline+'</span>':'')+'</div>' +
+        '</div>' +
+        '<div class="card-chevron">›</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function updateStats(tenders) {
+  document.getElementById('dTotal').textContent  = tenders.length;
+  document.getElementById('dSubmit').textContent = tenders.filter(t => (t.recommendation||'').includes('Подать')).length;
+  const avg = tenders.length ? Math.round(tenders.reduce((s,t) => s+(t.matchPercent||0),0)/tenders.length) : 0;
+  document.getElementById('dAvg').textContent = avg + '%';
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCards();
+}
+
+function setTime() {
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+}
+
+async function loadTenders() {
+  try {
+    const res = await fetch(GET_URL);
+    const data = await res.json();
+    const raw = data.tenders || data;
+    allTenders = Array.isArray(raw) ? raw.filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent||0) > 0) : [];
+    updateStats(allTenders);
+    renderCards();
+    setTime();
+  } catch(e) {
+    showToast('Ошибка загрузки');
+    document.getElementById('emptyState').classList.add('show');
+  } finally {
+    setTimeout(() => document.getElementById('loader').classList.add('gone'), 600);
+  }
+}
+
+async function refreshTenders() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  showToast('Ищем тендеры...', 35000);
+  try {
+    const res = await fetch(REFRESH_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const data = await res.json();
+    const raw = data.tenders || data;
+    const tenders = Array.isArray(raw) ? raw.filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent||0) > 0) : [];
+    if (tenders.length > 0) {
+      allTenders = tenders; updateStats(allTenders); renderCards(); setTime();
+      showToast('Найдено ' + tenders.length + ' тендеров');
+    } else { showToast('Новых тендеров не найдено'); }
+  } catch(e) { showToast('Ошибка при обновлении'); }
+  finally { btn.classList.remove('spinning'); }
+}
+
+// ── PROFILE ──
+const PROFILE_FIELDS = [
+  { id: 'f-company-name',  field: 'Company Name' },
+  { id: 'f-location',      field: 'Location' },
+  { id: 'f-languages',     field: 'Languages' },
+  { id: 'f-exp-years',     field: 'Experience Years' },
+  { id: 'f-team-size',     field: 'Team Size' },
+  { id: 'f-services',      field: 'Services' },
+  { id: 'f-keywords',      field: 'Keywords' },
+  { id: 'f-prev-projects', field: 'Previous Projects' },
+  { id: 'f-rel-exp',       field: 'Relevant Experience' },
+  { id: 'f-min-contract',  field: 'Min Contract UZS' },
+  { id: 'f-max-contract',  field: 'Max Contract UZS' },
+  { id: 'f-total-bids',    field: 'Total bids submitted' },
+  { id: 'f-total-wins',    field: 'Total Wins' },
+  { id: 'f-on-time',       field: 'On time delivery' },
+  { id: 'f-certifications',field: 'Certifications' },
+  { id: 'f-awards',        field: 'Awards' },
+  { id: 'f-team-members',  field: 'Key team members' },
+];
+
+async function loadProfile() {
+  // Load current profile from get-tenders endpoint (we'll add profile endpoint later)
+  // For now just show empty form or cached values
+}
+
+async function saveProfile() {
+  const btn = document.getElementById('saveBtn');
+  const status = document.getElementById('profileStatus');
+  btn.classList.add('saving');
+  btn.textContent = 'Сохранение...';
+
+  const updates = {};
+  PROFILE_FIELDS.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (el && el.value.trim()) updates[f.field] = el.value.trim();
+  });
+
+  try {
+    const res = await fetch(PROFILE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates })
+    });
+    const data = await res.json();
+    if (data.success) {
+      status.textContent = '✓ Профиль сохранён — AI обновит анализ при следующем запуске';
+      status.className = 'profile-status show success';
+      showToast('✓ Профиль сохранён');
+    } else {
+      throw new Error('Save failed');
+    }
+  } catch(e) {
+    status.textContent = '✕ Ошибка при сохранении — попробуй ещё раз';
+    status.className = 'profile-status show error';
+    showToast('Ошибка при сохранении');
+  } finally {
+    btn.classList.remove('saving');
+    btn.textContent = 'Сохранить профиль';
+  }
+}
+
+loadTenders();
+</script>
+</body>
+</html>
