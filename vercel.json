@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/get-tenders",
+      "destination": "https://soluraai.app.n8n.cloud/webhook/get-tenders"
+    },
+    {
+      "source": "/api/tender-refresh",
+      "destination": "https://soluraai.app.n8n.cloud/webhook/tender-refresh"
+    },
+    {
+      "source": "/api/save-profile",
+      "destination": "https://soluraai.app.n8n.cloud/webhook/save-profile"
+    }
+  ]
+}
