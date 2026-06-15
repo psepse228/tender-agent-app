@@ -1,6 +1,4 @@
-const { listRecords, createRecords, patchRecord } = require('./_airtable');
-
-const PROFILE_TABLE = 'tblhzGlJBg0xbWsVA';
+const { client } = require('./_supabase');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -13,19 +11,29 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'No updates provided' });
     }
 
-    // Serialize all profile fields into a single text blob stored in "Name".
-    // This works on any Airtable table without needing custom fields.
     const profileText = Object.entries(updates)
       .filter(([, v]) => v)
       .map(([k, v]) => `${k}: ${v}`)
       .join('\n');
 
-    const records = await listRecords(PROFILE_TABLE);
+    const sb = client();
 
-    if (records.length > 0) {
-      await patchRecord(PROFILE_TABLE, records[0].id, { Name: profileText });
+    const { data: existing } = await sb
+      .from('profile')
+      .select('id')
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      const { error } = await sb
+        .from('profile')
+        .update({ data: profileText, updated_at: new Date().toISOString() })
+        .eq('id', existing[0].id);
+      if (error) throw new Error(error.message);
     } else {
-      await createRecords(PROFILE_TABLE, [{ Name: profileText }]);
+      const { error } = await sb
+        .from('profile')
+        .insert({ data: profileText });
+      if (error) throw new Error(error.message);
     }
 
     res.status(200).json({ success: true });

@@ -1,9 +1,9 @@
-const OpenAI = require('openai');
-const { listRecords, createRecords, deleteRecords } = require('./_airtable');
+const OpenAI        = require('openai');
+const { client }    = require('./_supabase');
 
-const PROFILE_TABLE  = 'tblhzGlJBg0xbWsVA';
-const TENDERS_TABLE  = 'tblVDZGXzM9B7uM4O';
-const FIRECRAWL_URL  = 'https://api.firecrawl.dev/v1/scrape';
+const PROFILE_TABLE = 'profile';
+const TENDERS_TABLE = 'tenders';
+const FIRECRAWL_URL = 'https://api.firecrawl.dev/v1/scrape';
 
 const SOURCES = [
   { name: 'eTender UzEx', url: 'https://etender.uzex.uz' },
@@ -18,11 +18,13 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   try {
-    // 1. Load company profile (stored as plain text in "Name" field)
-    const profileRecords = await listRecords(PROFILE_TABLE);
-    const profileText    = profileRecords[0]?.fields?.['Name'] || 'No profile configured yet.';
+    const sb = client();
 
-    // 2. Scrape + score each source (pipeline: GPT starts as soon as each scrape finishes)
+    // 1. Load company profile
+    const { data: profileRows } = await sb.from(PROFILE_TABLE).select('data').limit(1);
+    const profileText = profileRows?.[0]?.data || 'No profile configured yet.';
+
+    // 2. Scrape + score each source in parallel (pipeline per source)
     const results = await Promise.allSettled(
       SOURCES.map(async (source) => {
         const markdown = await scrapeSource(source);
@@ -31,37 +33,34 @@ module.exports = async function handler(req, res) {
       })
     );
 
-    // 3. Flatten — keep everything GPT found, no score filter
+    // 3. Flatten — keep everything with a title
     const tenders = results
       .filter(r => r.status === 'fulfilled')
       .flatMap(r => r.value)
       .filter(t => t.title);
 
     const perSource = SOURCES.map((s, i) => ({
-      name:    s.name,
-      status:  results[i].status,
-      count:   results[i].status === 'fulfilled' ? results[i].value.length : 0,
-      reason:  results[i].status === 'rejected'  ? results[i].reason?.message : undefined,
+      name:   s.name,
+      status: results[i].status,
+      count:  results[i].status === 'fulfilled' ? results[i].value.length : 0,
     }));
-    console.log('Per-source results:', JSON.stringify(perSource));
-    console.log(`Total tenders found: ${tenders.length}`);
+    console.log('Per-source:', JSON.stringify(perSource));
+    console.log('Total tenders found:', tenders.length);
 
-    // 4. Return results immediately — Airtable save is best-effort
+    // 4. Return to client immediately
     res.status(200).json({ tenders, debug: perSource });
 
-    // 5. Persist to Airtable in background (failures don't affect the response)
+    // 5. Persist to Supabase in background
     try {
-      const existing = await listRecords(TENDERS_TABLE, 'fields[]=Title');
-      if (existing.length) {
-        await deleteRecords(TENDERS_TABLE, existing.map(r => r.id));
-      }
+      await sb.from(TENDERS_TABLE).delete().neq('id', '00000000-0000-0000-0000-000000000000');
       if (tenders.length) {
-        await createRecords(TENDERS_TABLE, tenders.map(toAirtableFields));
+        await sb.from(TENDERS_TABLE).insert(tenders.map(toRow));
       }
-      console.log('Airtable save complete');
+      console.log('Supabase save complete');
     } catch (saveErr) {
-      console.error('Airtable save failed (non-fatal):', saveErr.message);
+      console.error('Supabase save failed (non-fatal):', saveErr.message);
     }
+
   } catch (e) {
     console.error('Refresh error:', e.message);
     res.status(500).json({ error: e.message, tenders: [] });
@@ -93,7 +92,7 @@ async function scrapeSource(source) {
   }
 }
 
-// ── GPT-4O EXTRACTION + SCORING ───────────────────────────────────────────
+// ── GPT-4o EXTRACTION + SCORING ───────────────────────────────────────────
 
 async function extractAndScore(markdown, source, profileText) {
   const openai  = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -104,7 +103,7 @@ async function extractAndScore(markdown, source, profileText) {
 Company profile:
 ${profileText}
 
-Extract all tenders from the page content below and score each for relevance to this company.
+Extract all tenders from the page content and score each for relevance to this company.
 
 Scoring rules:
 - If budget is missing or unclear → set "financial" to 40-50 (NEVER 0)
@@ -115,7 +114,7 @@ Scoring rules:
 
 Return ONLY valid JSON: { "tenders": [ ... ] }
 
-Each tender object must have exactly these fields:
+Each tender object:
 {
   "title": "string",
   "organization": "string",
@@ -161,26 +160,26 @@ Extract up to 10 most relevant tenders. If no tenders found return { "tenders": 
   }
 }
 
-// ── AIRTABLE FIELD MAPPING ─────────────────────────────────────────────────
+// ── SUPABASE ROW MAPPING ──────────────────────────────────────────────────
 
-function toAirtableFields(t) {
+function toRow(t) {
   return {
-    'Title':           t.title           || '',
-    'Organization':    t.organization    || '',
-    'Budget':          t.budget          || '',
-    'Deadline':        t.deadline        || '',
-    'Source':          t.source          || '',
-    'Platform':        t.platform        || '',
-    'Match Percent':   Number(t.matchPercent)    || 0,
-    'Recommendation':  t.recommendation  || '',
-    'Compliance':      Number(t.compliance)      || 0,
-    'Financial':       Number(t.financial)       || 0,
-    'Feasibility':     Number(t.feasibility)     || 0,
-    'Win Chance':      Number(t.winChance)       || 0,
-    'Why Participate': t.whyParticipate  || '',
-    'Risks':           t.risks           || '',
-    'Action Plan':     t.actionPlan      || '',
-    'Risk Level':      t.riskLevel       || '',
-    'Profit Potential':t.profitPotential || '',
+    title:           t.title           || '',
+    organization:    t.organization    || '',
+    budget:          t.budget          || '',
+    deadline:        t.deadline        || '',
+    source:          t.source          || '',
+    platform:        t.platform        || '',
+    match_percent:   Number(t.matchPercent)   || 0,
+    recommendation:  t.recommendation  || '',
+    compliance:      Number(t.compliance)     || 0,
+    financial:       Number(t.financial)      || 0,
+    feasibility:     Number(t.feasibility)    || 0,
+    win_chance:      Number(t.winChance)      || 0,
+    why_participate: t.whyParticipate  || '',
+    risks:           t.risks           || '',
+    action_plan:     t.actionPlan      || '',
+    risk_level:      t.riskLevel       || '',
+    profit_potential:t.profitPotential || '',
   };
 }
