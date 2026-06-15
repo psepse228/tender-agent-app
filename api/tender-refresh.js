@@ -18,13 +18,9 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   try {
-    // 1. Load company profile
+    // 1. Load company profile (stored as plain text in "Name" field)
     const profileRecords = await listRecords(PROFILE_TABLE);
-    const profileFields  = profileRecords[0]?.fields || {};
-    const profileText    = Object.entries(profileFields)
-      .filter(([, v]) => v)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join('\n') || 'No profile configured yet.';
+    const profileText    = profileRecords[0]?.fields?.['Name'] || 'No profile configured yet.';
 
     // 2. Scrape + score each source (pipeline: GPT starts as soon as each scrape finishes)
     const results = await Promise.allSettled(
