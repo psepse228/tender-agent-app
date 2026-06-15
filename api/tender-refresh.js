@@ -41,18 +41,26 @@ module.exports = async function handler(req, res) {
       .flatMap(r => r.value)
       .filter(t => t.title && (t.matchPercent || 0) > 0);
 
-    // 4. Replace Airtable records
-    const existing = await listRecords(TENDERS_TABLE, 'fields[]=Title');
-    if (existing.length) {
-      await deleteRecords(TENDERS_TABLE, existing.map(r => r.id));
-    }
-    if (tenders.length) {
-      await createRecords(TENDERS_TABLE, tenders.map(toAirtableFields));
-    }
+    console.log(`Scraped ${tenders.length} tenders from ${SOURCES.length} sources`);
 
+    // 4. Return results immediately — Airtable save is best-effort
     res.status(200).json({ tenders });
+
+    // 5. Persist to Airtable in background (failures don't affect the response)
+    try {
+      const existing = await listRecords(TENDERS_TABLE, 'fields[]=Title');
+      if (existing.length) {
+        await deleteRecords(TENDERS_TABLE, existing.map(r => r.id));
+      }
+      if (tenders.length) {
+        await createRecords(TENDERS_TABLE, tenders.map(toAirtableFields));
+      }
+      console.log('Airtable save complete');
+    } catch (saveErr) {
+      console.error('Airtable save failed (non-fatal):', saveErr.message);
+    }
   } catch (e) {
-    console.error(e);
+    console.error('Refresh error:', e.message);
     res.status(500).json({ error: e.message, tenders: [] });
   }
 };
