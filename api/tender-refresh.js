@@ -35,16 +35,23 @@ module.exports = async function handler(req, res) {
       })
     );
 
-    // 3. Flatten and filter
+    // 3. Flatten — keep everything GPT found, no score filter
     const tenders = results
       .filter(r => r.status === 'fulfilled')
       .flatMap(r => r.value)
-      .filter(t => t.title && (t.matchPercent || 0) > 0);
+      .filter(t => t.title);
 
-    console.log(`Scraped ${tenders.length} tenders from ${SOURCES.length} sources`);
+    const perSource = SOURCES.map((s, i) => ({
+      name:    s.name,
+      status:  results[i].status,
+      count:   results[i].status === 'fulfilled' ? results[i].value.length : 0,
+      reason:  results[i].status === 'rejected'  ? results[i].reason?.message : undefined,
+    }));
+    console.log('Per-source results:', JSON.stringify(perSource));
+    console.log(`Total tenders found: ${tenders.length}`);
 
     // 4. Return results immediately — Airtable save is best-effort
-    res.status(200).json({ tenders });
+    res.status(200).json({ tenders, debug: perSource });
 
     // 5. Persist to Airtable in background (failures don't affect the response)
     try {
