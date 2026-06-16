@@ -1,0 +1,373 @@
+{
+  "name": "Tender Agent — Daily Scraper",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "triggerAtHour": 9, "triggerAtMinute": 0 }]
+        }
+      },
+      "id": "node-001",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [80, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.airtable.com/v0/appR9ZChkECIS64SX/tblhzGlJBg0xbWsVA",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_AIRTABLE_PAT" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-002",
+      "name": "Get Company Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [300, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer fc-12d3354b08cb4dff9d747584d42aab0d" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"url\": \"https://etender.uzex.uz\", \"formats\": [\"markdown\"], \"onlyMainContent\": true}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "node-003",
+      "name": "Firecrawl — etender.uzex.uz",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer fc-12d3354b08cb4dff9d747584d42aab0d" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"url\": \"https://xt-xarid.uz\", \"formats\": [\"markdown\"], \"onlyMainContent\": true}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "node-004",
+      "name": "Firecrawl — xt-xarid.uz",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer fc-12d3354b08cb4dff9d747584d42aab0d" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"url\": \"https://tenderweek.com\", \"formats\": [\"markdown\"], \"onlyMainContent\": true}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "node-005",
+      "name": "Firecrawl — tenderweek.com",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer fc-12d3354b08cb4dff9d747584d42aab0d" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"url\": \"https://www.adb.org/projects?filter=business_opportunity\", \"formats\": [\"markdown\"], \"onlyMainContent\": true}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "node-006",
+      "name": "Firecrawl — adb.org",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 480]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer fc-12d3354b08cb4dff9d747584d42aab0d" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"url\": \"https://projects.worldbank.org/en/projects-operations/procurement\", \"formats\": [\"markdown\"], \"onlyMainContent\": true}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "node-007",
+      "name": "Firecrawl — worldbank.org",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 640]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer fc-12d3354b08cb4dff9d747584d42aab0d" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"url\": \"https://bicotender.ru\", \"formats\": [\"markdown\"], \"onlyMainContent\": true}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "node-008",
+      "name": "Firecrawl — bicotender.ru",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 800]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 6
+      },
+      "id": "node-009",
+      "name": "Merge Scrape Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [760, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pull company profile from earlier node\nconst profileRaw = $('Get Company Profile').first().json;\nconst profileFields = profileRaw.records?.[0]?.fields || {};\nconst profileText = Object.entries(profileFields)\n  .filter(([, v]) => v)\n  .map(([k, v]) => `${k}: ${v}`)\n  .join('\\n') || 'Financial consulting and audit company in Tashkent, Uzbekistan';\n\n// Get keywords for relevance filter\nconst keywords = (profileFields['Keywords'] || 'аудит,финансы,консалтинг,бухгалтер,audit,finance')\n  .toLowerCase().split(',').map(k => k.trim()).filter(Boolean);\n\n// Aggregate scraped content from all 6 sources\nconst items = $input.all();\nlet allContent = '';\n\nfor (const item of items) {\n  const markdown = item.json.data?.markdown || item.json.markdown || '';\n  const sourceUrl = item.json.data?.metadata?.url || item.json.url || '';\n  if (markdown.length > 200) {\n    allContent += `\\n\\n## Source: ${sourceUrl}\\n${markdown.slice(0, 3500)}`;\n  }\n}\n\n// Cap at 20k chars\nallContent = allContent.slice(0, 20000);\n\nconst prompt = `You are a tender analyst for a company in Tashkent, Uzbekistan.\n\nCOMPANY PROFILE:\n${profileText}\n\nSCRAPED TENDER CONTENT FROM 6 PLATFORMS:\n${allContent}\n\nExtract ALL tenders from the content and score each against the company profile.\n\nSCORING RULES:\n- missing or unclear budget → financial = 40-50 (NEVER 0)\n- matchPercent = compliance×0.4 + financial×0.2 + feasibility×0.25 + winChance×0.15\n- matchPercent ≥ 70 → recommendation = \"Подать заявку\"\n- matchPercent 40-69 → recommendation = \"Рассмотреть\"\n- matchPercent < 40 → recommendation = \"Пропустить\"\n\nReturn ONLY a valid JSON array (no markdown, no explanation):\n[\n  {\n    \"title\": \"string\",\n    \"organization\": \"string\",\n    \"budget\": \"string or null\",\n    \"deadline\": \"string or null\",\n    \"source\": \"URL string\",\n    \"platform\": \"platform name\",\n    \"matchPercent\": number 0-100,\n    \"recommendation\": \"Подать заявку|Рассмотреть|Пропустить\",\n    \"compliance\": number 0-100,\n    \"financial\": number 0-100,\n    \"feasibility\": number 0-100,\n    \"winChance\": number 0-100,\n    \"whyParticipate\": \"string\",\n    \"risks\": \"string\",\n    \"actionPlan\": \"string\",\n    \"riskLevel\": \"Низкий|Средний|Высокий\",\n    \"profitPotential\": \"Низкий|Средний|Высокий\"\n  }\n]\n\nExtract up to 15 most relevant tenders. Return [] if nothing found.`;\n\nreturn [{ json: { prompt, profileText } }];"
+      },
+      "id": "node-010",
+      "name": "Prepare Data for AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 400]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a tender analyst. Return ONLY valid JSON arrays. No markdown, no code blocks, no explanation."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "simplifyOutput": false,
+        "options": {
+          "maxTokens": 4000,
+          "temperature": 0.1
+        }
+      },
+      "id": "node-011",
+      "name": "OpenAI GPT-4o",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.7,
+      "position": [1200, 400],
+      "credentials": {
+        "openAiApi": { "id": "OPENAI_CREDENTIAL_ID", "name": "OpenAI" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reads from OpenAI 'Message a model' node output format\nconst raw = $input.first().json;\nconst text = raw.output?.[0]?.content?.[0]?.text\n  || raw.choices?.[0]?.message?.content\n  || '[]';\n\nlet tenders = [];\ntry {\n  // Extract JSON array from response\n  const match = text.match(/\\[[\\s\\S]*\\]/);\n  if (match) tenders = JSON.parse(match[0]);\n} catch (e) {\n  console.log('Parse error:', e.message, 'Raw:', text.slice(0, 200));\n}\n\nif (!tenders.length) {\n  return [{ json: { _empty: true, title: 'NO_TENDERS_FOUND' } }];\n}\n\nreturn tenders\n  .filter(t => t.title && t.title !== 'NO_TENDERS_FOUND')\n  .map(t => ({ json: t }));"
+      },
+      "id": "node-012",
+      "name": "Parse AI Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 400]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appR9ZChkECIS64SX",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblVDZGXzM9B7uM4O",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Title": "={{ $json.title }}",
+            "Organization": "={{ $json.organization || '' }}",
+            "Budget": "={{ $json.budget || '' }}",
+            "Deadline": "={{ $json.deadline || '' }}",
+            "Source": "={{ $json.source || '' }}",
+            "Platform": "={{ $json.platform || '' }}",
+            "Match Percent": "={{ $json.matchPercent || 0 }}",
+            "Recommendation": "={{ $json.recommendation || '' }}",
+            "Compliance": "={{ $json.compliance || 0 }}",
+            "Financial": "={{ $json.financial || 0 }}",
+            "Feasibility": "={{ $json.feasibility || 0 }}",
+            "Win Chance": "={{ $json.winChance || 0 }}",
+            "Why Participate": "={{ $json.whyParticipate || '' }}",
+            "Risks": "={{ $json.risks || '' }}",
+            "Action Plan": "={{ $json.actionPlan || '' }}",
+            "Risk Level": "={{ $json.riskLevel || '' }}",
+            "Profit Potential": "={{ $json.profitPotential || '' }}"
+          },
+          "schema": [],
+          "ignoreIfEmpty": false,
+          "attemptToConvertTypes": true
+        }
+      },
+      "id": "node-013",
+      "name": "Save to Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1640, 400],
+      "credentials": {
+        "airtableTokenApi": { "id": "AIRTABLE_CREDENTIAL_ID", "name": "Airtable" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Aggregate all saved tenders into one Telegram message\nconst items = $input.all();\nconst tenders = items\n  .map(i => i.json)\n  .filter(t => t.title && t.title !== 'NO_TENDERS_FOUND')\n  .sort((a, b) => (b.matchPercent || 0) - (a.matchPercent || 0));\n\nif (!tenders.length) {\n  return [{ json: { message: '🤖 *Tender Agent*\\n\\nСегодня тендеров не найдено.' } }];\n}\n\nconst submitCount = tenders.filter(t => (t.recommendation || '').includes('Подать')).length;\nconst avgScore = Math.round(tenders.reduce((s, t) => s + (t.matchPercent || 0), 0) / tenders.length);\n\nlet msg = `🤖 *Tender Agent* — ежедневная сводка\\n`;\nmsg += `📊 Найдено: *${tenders.length}* | К подаче: *${submitCount}* | Ср. балл: *${avgScore}%*\\n`;\nmsg += `━━━━━━━━━━━━━━━━━\\n\\n`;\n\nconst top = tenders.slice(0, 10);\nfor (const t of top) {\n  const emoji = t.matchPercent >= 70 ? '🟢' : t.matchPercent >= 40 ? '🟡' : '🔴';\n  msg += `${emoji} *${(t.title || '').slice(0, 80)}*\\n`;\n  if (t.organization) msg += `   🏢 ${t.organization}\\n`;\n  if (t.budget) msg += `   💰 ${t.budget}\\n`;\n  if (t.deadline) msg += `   📅 до ${t.deadline}\\n`;\n  msg += `   Балл: *${t.matchPercent}%* — ${t.recommendation}\\n`;\n  if (t.source && t.source.startsWith('http')) msg += `   🔗 ${t.source}\\n`;\n  msg += '\\n';\n}\n\nif (tenders.length > 10) {\n  msg += `_...и ещё ${tenders.length - 10} тендеров в базе_\\n`;\n}\n\nreturn [{ json: { message: msg } }];"
+      },
+      "id": "node-014",
+      "name": "Build Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1860, 400]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "1631410032",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "node-015",
+      "name": "Telegram — 1631410032",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2080, 300],
+      "credentials": {
+        "telegramApi": { "id": "TELEGRAM_CREDENTIAL_ID", "name": "Telegram Bot" }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "526176792",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "node-016",
+      "name": "Telegram — 526176792",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2080, 500],
+      "credentials": {
+        "telegramApi": { "id": "TELEGRAM_CREDENTIAL_ID", "name": "Telegram Bot" }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Get Company Profile", "type": "main", "index": 0 }]]
+    },
+    "Get Company Profile": {
+      "main": [[
+        { "node": "Firecrawl — etender.uzex.uz",  "type": "main", "index": 0 },
+        { "node": "Firecrawl — xt-xarid.uz",       "type": "main", "index": 0 },
+        { "node": "Firecrawl — tenderweek.com",    "type": "main", "index": 0 },
+        { "node": "Firecrawl — adb.org",           "type": "main", "index": 0 },
+        { "node": "Firecrawl — worldbank.org",     "type": "main", "index": 0 },
+        { "node": "Firecrawl — bicotender.ru",     "type": "main", "index": 0 }
+      ]]
+    },
+    "Firecrawl — etender.uzex.uz":  { "main": [[{ "node": "Merge Scrape Results", "type": "main", "index": 0 }]] },
+    "Firecrawl — xt-xarid.uz":      { "main": [[{ "node": "Merge Scrape Results", "type": "main", "index": 1 }]] },
+    "Firecrawl — tenderweek.com":   { "main": [[{ "node": "Merge Scrape Results", "type": "main", "index": 2 }]] },
+    "Firecrawl — adb.org":          { "main": [[{ "node": "Merge Scrape Results", "type": "main", "index": 3 }]] },
+    "Firecrawl — worldbank.org":    { "main": [[{ "node": "Merge Scrape Results", "type": "main", "index": 4 }]] },
+    "Firecrawl — bicotender.ru":    { "main": [[{ "node": "Merge Scrape Results", "type": "main", "index": 5 }]] },
+    "Merge Scrape Results": {
+      "main": [[{ "node": "Prepare Data for AI", "type": "main", "index": 0 }]]
+    },
+    "Prepare Data for AI": {
+      "main": [[{ "node": "OpenAI GPT-4o", "type": "main", "index": 0 }]]
+    },
+    "OpenAI GPT-4o": {
+      "main": [[{ "node": "Parse AI Results", "type": "main", "index": 0 }]]
+    },
+    "Parse AI Results": {
+      "main": [[{ "node": "Save to Airtable", "type": "main", "index": 0 }]]
+    },
+    "Save to Airtable": {
+      "main": [[{ "node": "Build Telegram Message", "type": "main", "index": 0 }]]
+    },
+    "Build Telegram Message": {
+      "main": [[
+        { "node": "Telegram — 1631410032", "type": "main", "index": 0 },
+        { "node": "Telegram — 526176792",  "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
