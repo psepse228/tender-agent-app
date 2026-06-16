@@ -3,6 +3,33 @@
   "nodes": [
     {
       "parameters": {
+        "httpMethod": "POST",
+        "path": "tender-refresh",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-019",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [80, 200],
+      "webhookId": "tender-refresh-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ tenders: ($('Aggregate for Supabase').first().json.rows || []).map(r => ({ title: r.title, organization: r.organization, budget: r.budget, deadline: r.deadline, source: r.source, platform: r.platform, matchPercent: r.match_percent, recommendation: r.recommendation, compliance: r.compliance, financial: r.financial, feasibility: r.feasibility, winChance: r.win_chance, whyParticipate: r.why_participate, risks: r.risks, actionPlan: r.action_plan, riskLevel: r.risk_level, profitPotential: r.profit_potential })) }) }}",
+        "options": {}
+      },
+      "id": "node-020",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2520, 100],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
         "rule": {
           "interval": [{ "triggerAtHour": 9, "triggerAtMinute": 0 }]
         }
@@ -330,6 +357,9 @@
     "Schedule Trigger": {
       "main": [[{ "node": "Get Company Profile", "type": "main", "index": 0 }]]
     },
+    "Webhook Trigger": {
+      "main": [[{ "node": "Get Company Profile", "type": "main", "index": 0 }]]
+    },
     "Get Company Profile": {
       "main": [[
         { "node": "Firecrawl — etender.uzex.uz",  "type": "main", "index": 0 },
@@ -356,10 +386,12 @@
     "Build Telegram Message": {
       "main": [[
         { "node": "Telegram — 1631410032", "type": "main", "index": 0 },
-        { "node": "Telegram — 526176792",  "type": "main", "index": 0 }
+        { "node": "Telegram — 526176792",  "type": "main", "index": 0 },
+        { "node": "Respond to Webhook",    "type": "main", "index": 0 }
       ]]
     }
   },
   "settings": { "executionOrder": "v1" },
+  "staticData": null,
   "active": false
 }

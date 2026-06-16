@@ -694,9 +694,10 @@ a { text-decoration: none; color: inherit; }
 <div class="toast" id="toast"></div>
 
 <script>
-const GET_URL     = '/api/get-tenders';
-const REFRESH_URL = '/api/tender-refresh';
-const PROFILE_URL = '/api/save-profile';
+const GET_URL         = '/api/get-tenders';
+const REFRESH_URL     = '/api/tender-refresh';
+const PROFILE_URL     = '/api/save-profile';
+const N8N_WEBHOOK_URL = 'YOUR_N8N_WEBHOOK_URL'; // paste your n8n webhook URL here
 
 let allTenders = [];
 let currentFilter = 'all';
@@ -911,13 +912,32 @@ async function loadTenders() {
 async function refreshTenders() {
   const btn = document.getElementById('refreshBtn');
   btn.classList.add('spinning');
-  showToast('Ищем тендеры...', 35000);
+  showToast('Ищем тендеры... (1-2 мин)', 120000);
   try {
-    const res  = await fetch(REFRESH_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const useN8n = N8N_WEBHOOK_URL && !N8N_WEBHOOK_URL.startsWith('YOUR_');
+    const url    = useN8n ? N8N_WEBHOOK_URL : REFRESH_URL;
+    const ctrl   = new AbortController();
+    const timer  = setTimeout(() => ctrl.abort(), useN8n ? 120000 : 60000);
+    const res    = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
     const data = await res.json();
     const raw  = data.tenders || data;
+    const normalize = t => ({
+      ...t,
+      matchPercent:    t.matchPercent    ?? t.match_percent    ?? 0,
+      winChance:       t.winChance       ?? t.win_chance       ?? 0,
+      whyParticipate:  t.whyParticipate  ?? t.why_participate  ?? '',
+      actionPlan:      t.actionPlan      ?? t.action_plan      ?? '',
+      riskLevel:       t.riskLevel       ?? t.risk_level       ?? '',
+      profitPotential: t.profitPotential ?? t.profit_potential ?? '',
+    });
     const tenders = Array.isArray(raw)
-      ? raw.filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent || 0) > 0)
+      ? raw.map(normalize).filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent || 0) > 0)
       : [];
     if (tenders.length > 0) {
       allTenders = tenders; updateStats(allTenders); renderCards(); setTime();
@@ -926,7 +946,7 @@ async function refreshTenders() {
       showToast('Новых тендеров не найдено');
     }
   } catch (e) {
-    showToast('Ошибка при обновлении');
+    showToast(e.name === 'AbortError' ? 'Превышено время ожидания' : 'Ошибка при обновлении');
   } finally {
     btn.classList.remove('spinning');
   }
