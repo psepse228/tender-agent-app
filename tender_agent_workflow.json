@@ -16,11 +16,12 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://api.airtable.com/v0/appR9ZChkECIS64SX/tblhzGlJBg0xbWsVA",
+        "url": "https://djtdvxtfhqhbqsymzkyq.supabase.co/rest/v1/profile?select=data&limit=1",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer YOUR_AIRTABLE_PAT" }
+            { "name": "apikey",        "value": "YOUR_SUPABASE_SECRET_KEY" },
+            { "name": "Authorization", "value": "Bearer YOUR_SUPABASE_SECRET_KEY" }
           ]
         },
         "options": {}
@@ -170,7 +171,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Pull company profile from earlier node\nconst profileRaw = $('Get Company Profile').first().json;\nconst profileFields = profileRaw.records?.[0]?.fields || {};\nconst profileText = Object.entries(profileFields)\n  .filter(([, v]) => v)\n  .map(([k, v]) => `${k}: ${v}`)\n  .join('\\n') || 'Financial consulting and audit company in Tashkent, Uzbekistan';\n\n// Get keywords for relevance filter\nconst keywords = (profileFields['Keywords'] || 'аудит,финансы,консалтинг,бухгалтер,audit,finance')\n  .toLowerCase().split(',').map(k => k.trim()).filter(Boolean);\n\n// Aggregate scraped content from all 6 sources\nconst items = $input.all();\nlet allContent = '';\n\nfor (const item of items) {\n  const markdown = item.json.data?.markdown || item.json.markdown || '';\n  const sourceUrl = item.json.data?.metadata?.url || item.json.url || '';\n  if (markdown.length > 200) {\n    allContent += `\\n\\n## Source: ${sourceUrl}\\n${markdown.slice(0, 3500)}`;\n  }\n}\n\n// Cap at 20k chars\nallContent = allContent.slice(0, 20000);\n\nconst prompt = `You are a tender analyst for a company in Tashkent, Uzbekistan.\n\nCOMPANY PROFILE:\n${profileText}\n\nSCRAPED TENDER CONTENT FROM 6 PLATFORMS:\n${allContent}\n\nExtract ALL tenders from the content and score each against the company profile.\n\nSCORING RULES:\n- missing or unclear budget → financial = 40-50 (NEVER 0)\n- matchPercent = compliance×0.4 + financial×0.2 + feasibility×0.25 + winChance×0.15\n- matchPercent ≥ 70 → recommendation = \"Подать заявку\"\n- matchPercent 40-69 → recommendation = \"Рассмотреть\"\n- matchPercent < 40 → recommendation = \"Пропустить\"\n\nReturn ONLY a valid JSON array (no markdown, no explanation):\n[\n  {\n    \"title\": \"string\",\n    \"organization\": \"string\",\n    \"budget\": \"string or null\",\n    \"deadline\": \"string or null\",\n    \"source\": \"URL string\",\n    \"platform\": \"platform name\",\n    \"matchPercent\": number 0-100,\n    \"recommendation\": \"Подать заявку|Рассмотреть|Пропустить\",\n    \"compliance\": number 0-100,\n    \"financial\": number 0-100,\n    \"feasibility\": number 0-100,\n    \"winChance\": number 0-100,\n    \"whyParticipate\": \"string\",\n    \"risks\": \"string\",\n    \"actionPlan\": \"string\",\n    \"riskLevel\": \"Низкий|Средний|Высокий\",\n    \"profitPotential\": \"Низкий|Средний|Высокий\"\n  }\n]\n\nExtract up to 15 most relevant tenders. Return [] if nothing found.`;\n\nreturn [{ json: { prompt, profileText } }];"
+        "jsCode": "// Pull company profile from Supabase (returns [{data: 'Company Name: ...\\nServices: ...'}])\nconst profileRaw = $('Get Company Profile').first().json;\nconst profileArr = Array.isArray(profileRaw) ? profileRaw : [profileRaw];\nconst profileText = profileArr[0]?.data || 'Financial consulting and audit company in Tashkent, Uzbekistan';\n\n// Aggregate scraped content from all 6 sources\nconst items = $input.all();\nlet allContent = '';\n\nfor (const item of items) {\n  const markdown = item.json.data?.markdown || item.json.markdown || '';\n  const sourceUrl = item.json.data?.metadata?.url || '';\n  if (markdown.length > 200) {\n    allContent += `\\n\\n## Source: ${sourceUrl}\\n${markdown.slice(0, 3500)}`;\n  }\n}\n\nallContent = allContent.slice(0, 20000);\n\nconst prompt = `You are a tender analyst for a company in Tashkent, Uzbekistan.\n\nCOMPANY PROFILE:\n${profileText}\n\nSCRAPED TENDER CONTENT FROM 6 PLATFORMS:\n${allContent}\n\nExtract ALL tenders from the content and score each against the company profile.\n\nSCORING RULES:\n- missing or unclear budget → financial = 40-50 (NEVER 0)\n- matchPercent = compliance×0.4 + financial×0.2 + feasibility×0.25 + winChance×0.15\n- matchPercent ≥ 70 → recommendation = \"Подать заявку\"\n- matchPercent 40-69 → recommendation = \"Рассмотреть\"\n- matchPercent < 40 → recommendation = \"Пропустить\"\n\nReturn ONLY a valid JSON array (no markdown, no code blocks, no explanation):\n[\n  {\n    \"title\": \"string\",\n    \"organization\": \"string\",\n    \"budget\": \"string or null\",\n    \"deadline\": \"string or null\",\n    \"source\": \"URL string\",\n    \"platform\": \"platform name\",\n    \"matchPercent\": number 0-100,\n    \"recommendation\": \"Подать заявку|Рассмотреть|Пропустить\",\n    \"compliance\": number 0-100,\n    \"financial\": number 0-100,\n    \"feasibility\": number 0-100,\n    \"winChance\": number 0-100,\n    \"whyParticipate\": \"string\",\n    \"risks\": \"string\",\n    \"actionPlan\": \"string\",\n    \"riskLevel\": \"Низкий|Средний|Высокий\",\n    \"profitPotential\": \"Низкий|Средний|Высокий\"\n  }\n]\n\nExtract up to 15 most relevant tenders. Return [] if nothing found.`;\n\nreturn [{ json: { prompt, profileText } }];"
       },
       "id": "node-010",
       "name": "Prepare Data for AI",
@@ -217,7 +218,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Reads from OpenAI 'Message a model' node output format\nconst raw = $input.first().json;\nconst text = raw.output?.[0]?.content?.[0]?.text\n  || raw.choices?.[0]?.message?.content\n  || '[]';\n\nlet tenders = [];\ntry {\n  // Extract JSON array from response\n  const match = text.match(/\\[[\\s\\S]*\\]/);\n  if (match) tenders = JSON.parse(match[0]);\n} catch (e) {\n  console.log('Parse error:', e.message, 'Raw:', text.slice(0, 200));\n}\n\nif (!tenders.length) {\n  return [{ json: { _empty: true, title: 'NO_TENDERS_FOUND' } }];\n}\n\nreturn tenders\n  .filter(t => t.title && t.title !== 'NO_TENDERS_FOUND')\n  .map(t => ({ json: t }));"
+        "jsCode": "const raw = $input.first().json;\nconst text = raw.output?.[0]?.content?.[0]?.text\n  || raw.choices?.[0]?.message?.content\n  || '[]';\n\nlet tenders = [];\ntry {\n  const match = text.match(/\\[[\\s\\S]*\\]/);\n  if (match) tenders = JSON.parse(match[0]);\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nreturn tenders\n  .filter(t => t && t.title)\n  .map(t => ({ json: t }));"
       },
       "id": "node-012",
       "name": "Parse AI Results",
@@ -227,63 +228,68 @@
     },
     {
       "parameters": {
-        "resource": "record",
-        "operation": "create",
-        "base": {
-          "__rl": true,
-          "value": "appR9ZChkECIS64SX",
-          "mode": "id"
-        },
-        "table": {
-          "__rl": true,
-          "value": "tblVDZGXzM9B7uM4O",
-          "mode": "id"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Title": "={{ $json.title }}",
-            "Organization": "={{ $json.organization || '' }}",
-            "Budget": "={{ $json.budget || '' }}",
-            "Deadline": "={{ $json.deadline || '' }}",
-            "Source": "={{ $json.source || '' }}",
-            "Platform": "={{ $json.platform || '' }}",
-            "Match Percent": "={{ $json.matchPercent || 0 }}",
-            "Recommendation": "={{ $json.recommendation || '' }}",
-            "Compliance": "={{ $json.compliance || 0 }}",
-            "Financial": "={{ $json.financial || 0 }}",
-            "Feasibility": "={{ $json.feasibility || 0 }}",
-            "Win Chance": "={{ $json.winChance || 0 }}",
-            "Why Participate": "={{ $json.whyParticipate || '' }}",
-            "Risks": "={{ $json.risks || '' }}",
-            "Action Plan": "={{ $json.actionPlan || '' }}",
-            "Risk Level": "={{ $json.riskLevel || '' }}",
-            "Profit Potential": "={{ $json.profitPotential || '' }}"
-          },
-          "schema": [],
-          "ignoreIfEmpty": false,
-          "attemptToConvertTypes": true
-        }
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Aggregate all tenders into a single Supabase-ready row array\nconst items = $input.all();\nconst rows = items\n  .map(i => i.json)\n  .filter(t => t && t.title)\n  .map(t => ({\n    title:           t.title           || '',\n    organization:    t.organization    || '',\n    budget:          t.budget          || null,\n    deadline:        t.deadline        || null,\n    source:          t.source          || '',\n    platform:        t.platform        || '',\n    match_percent:   Number(t.matchPercent)   || 0,\n    recommendation:  t.recommendation  || '',\n    compliance:      Number(t.compliance)     || 0,\n    financial:       Number(t.financial)      || 0,\n    feasibility:     Number(t.feasibility)    || 0,\n    win_chance:      Number(t.winChance)      || 0,\n    why_participate: t.whyParticipate  || '',\n    risks:           t.risks           || '',\n    action_plan:     t.actionPlan      || '',\n    risk_level:      t.riskLevel       || '',\n    profit_potential:t.profitPotential || ''\n  }));\n\nreturn [{ json: { rows, count: rows.length } }];"
       },
       "id": "node-013",
-      "name": "Save to Airtable",
-      "type": "n8n-nodes-base.airtable",
-      "typeVersion": 2.1,
-      "position": [1640, 400],
-      "credentials": {
-        "airtableTokenApi": { "id": "AIRTABLE_CREDENTIAL_ID", "name": "Airtable" }
-      }
+      "name": "Aggregate for Supabase",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 400]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "https://djtdvxtfhqhbqsymzkyq.supabase.co/rest/v1/tenders?id=not.is.null",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "YOUR_SUPABASE_SECRET_KEY" },
+            { "name": "Authorization", "value": "Bearer YOUR_SUPABASE_SECRET_KEY" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-014",
+      "name": "Delete Old Tenders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1860, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://djtdvxtfhqhbqsymzkyq.supabase.co/rest/v1/tenders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "YOUR_SUPABASE_SECRET_KEY" },
+            { "name": "Authorization", "value": "Bearer YOUR_SUPABASE_SECRET_KEY" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.rows) }}",
+        "options": {}
+      },
+      "id": "node-015",
+      "name": "Save to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2080, 400]
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Aggregate all saved tenders into one Telegram message\nconst items = $input.all();\nconst tenders = items\n  .map(i => i.json)\n  .filter(t => t.title && t.title !== 'NO_TENDERS_FOUND')\n  .sort((a, b) => (b.matchPercent || 0) - (a.matchPercent || 0));\n\nif (!tenders.length) {\n  return [{ json: { message: '🤖 *Tender Agent*\\n\\nСегодня тендеров не найдено.' } }];\n}\n\nconst submitCount = tenders.filter(t => (t.recommendation || '').includes('Подать')).length;\nconst avgScore = Math.round(tenders.reduce((s, t) => s + (t.matchPercent || 0), 0) / tenders.length);\n\nlet msg = `🤖 *Tender Agent* — ежедневная сводка\\n`;\nmsg += `📊 Найдено: *${tenders.length}* | К подаче: *${submitCount}* | Ср. балл: *${avgScore}%*\\n`;\nmsg += `━━━━━━━━━━━━━━━━━\\n\\n`;\n\nconst top = tenders.slice(0, 10);\nfor (const t of top) {\n  const emoji = t.matchPercent >= 70 ? '🟢' : t.matchPercent >= 40 ? '🟡' : '🔴';\n  msg += `${emoji} *${(t.title || '').slice(0, 80)}*\\n`;\n  if (t.organization) msg += `   🏢 ${t.organization}\\n`;\n  if (t.budget) msg += `   💰 ${t.budget}\\n`;\n  if (t.deadline) msg += `   📅 до ${t.deadline}\\n`;\n  msg += `   Балл: *${t.matchPercent}%* — ${t.recommendation}\\n`;\n  if (t.source && t.source.startsWith('http')) msg += `   🔗 ${t.source}\\n`;\n  msg += '\\n';\n}\n\nif (tenders.length > 10) {\n  msg += `_...и ещё ${tenders.length - 10} тендеров в базе_\\n`;\n}\n\nreturn [{ json: { message: msg } }];"
+        "jsCode": "const item = $input.first().json;\n// rows were passed through from Aggregate node\nconst tenders = ($('Aggregate for Supabase').first().json.rows || [])\n  .sort((a, b) => (b.match_percent || 0) - (a.match_percent || 0));\n\nif (!tenders.length) {\n  return [{ json: { message: '🤖 *Tender Agent*\\n\\nСегодня тендеров не найдено.' } }];\n}\n\nconst submitCount = tenders.filter(t => (t.recommendation || '').includes('Подать')).length;\nconst avgScore = Math.round(tenders.reduce((s, t) => s + (t.match_percent || 0), 0) / tenders.length);\n\nlet msg = `🤖 *Tender Agent* — ежедневная сводка\\n`;\nmsg += `📊 Найдено: *${tenders.length}* | К подаче: *${submitCount}* | Ср. балл: *${avgScore}%*\\n`;\nmsg += `━━━━━━━━━━━━━━━━━\\n\\n`;\n\nfor (const t of tenders.slice(0, 10)) {\n  const emoji = t.match_percent >= 70 ? '🟢' : t.match_percent >= 40 ? '🟡' : '🔴';\n  msg += `${emoji} *${(t.title || '').slice(0, 80)}*\\n`;\n  if (t.organization)  msg += `   🏢 ${t.organization}\\n`;\n  if (t.budget)        msg += `   💰 ${t.budget}\\n`;\n  if (t.deadline)      msg += `   📅 до ${t.deadline}\\n`;\n  msg += `   Балл: *${t.match_percent}%* — ${t.recommendation}\\n`;\n  if (t.source?.startsWith('http')) msg += `   🔗 ${t.source}\\n`;\n  msg += '\\n';\n}\n\nif (tenders.length > 10) msg += `_...и ещё ${tenders.length - 10} тендеров в базе_\\n`;\n\nreturn [{ json: { message: msg } }];"
       },
-      "id": "node-014",
+      "id": "node-016",
       "name": "Build Telegram Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1860, 400]
+      "position": [2300, 400]
     },
     {
       "parameters": {
@@ -291,15 +297,13 @@
         "operation": "sendMessage",
         "chatId": "1631410032",
         "text": "={{ $json.message }}",
-        "additionalFields": {
-          "parse_mode": "Markdown"
-        }
+        "additionalFields": { "parse_mode": "Markdown" }
       },
-      "id": "node-015",
+      "id": "node-017",
       "name": "Telegram — 1631410032",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [2080, 300],
+      "position": [2520, 300],
       "credentials": {
         "telegramApi": { "id": "TELEGRAM_CREDENTIAL_ID", "name": "Telegram Bot" }
       }
@@ -310,15 +314,13 @@
         "operation": "sendMessage",
         "chatId": "526176792",
         "text": "={{ $json.message }}",
-        "additionalFields": {
-          "parse_mode": "Markdown"
-        }
+        "additionalFields": { "parse_mode": "Markdown" }
       },
-      "id": "node-016",
+      "id": "node-018",
       "name": "Telegram — 526176792",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [2080, 500],
+      "position": [2520, 500],
       "credentials": {
         "telegramApi": { "id": "TELEGRAM_CREDENTIAL_ID", "name": "Telegram Bot" }
       }
@@ -344,21 +346,13 @@
     "Firecrawl — adb.org":          { "main": [[{ "node": "Merge Scrape Results", "type": "main", "index": 3 }]] },
     "Firecrawl — worldbank.org":    { "main": [[{ "node": "Merge Scrape Results", "type": "main", "index": 4 }]] },
     "Firecrawl — bicotender.ru":    { "main": [[{ "node": "Merge Scrape Results", "type": "main", "index": 5 }]] },
-    "Merge Scrape Results": {
-      "main": [[{ "node": "Prepare Data for AI", "type": "main", "index": 0 }]]
-    },
-    "Prepare Data for AI": {
-      "main": [[{ "node": "OpenAI GPT-4o", "type": "main", "index": 0 }]]
-    },
-    "OpenAI GPT-4o": {
-      "main": [[{ "node": "Parse AI Results", "type": "main", "index": 0 }]]
-    },
-    "Parse AI Results": {
-      "main": [[{ "node": "Save to Airtable", "type": "main", "index": 0 }]]
-    },
-    "Save to Airtable": {
-      "main": [[{ "node": "Build Telegram Message", "type": "main", "index": 0 }]]
-    },
+    "Merge Scrape Results":   { "main": [[{ "node": "Prepare Data for AI",    "type": "main", "index": 0 }]] },
+    "Prepare Data for AI":    { "main": [[{ "node": "OpenAI GPT-4o",           "type": "main", "index": 0 }]] },
+    "OpenAI GPT-4o":          { "main": [[{ "node": "Parse AI Results",        "type": "main", "index": 0 }]] },
+    "Parse AI Results":       { "main": [[{ "node": "Aggregate for Supabase",  "type": "main", "index": 0 }]] },
+    "Aggregate for Supabase": { "main": [[{ "node": "Delete Old Tenders",      "type": "main", "index": 0 }]] },
+    "Delete Old Tenders":     { "main": [[{ "node": "Save to Supabase",        "type": "main", "index": 0 }]] },
+    "Save to Supabase":       { "main": [[{ "node": "Build Telegram Message",  "type": "main", "index": 0 }]] },
     "Build Telegram Message": {
       "main": [[
         { "node": "Telegram — 1631410032", "type": "main", "index": 0 },
@@ -366,8 +360,6 @@
       ]]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
+  "settings": { "executionOrder": "v1" },
   "active": false
 }
