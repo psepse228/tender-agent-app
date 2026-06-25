@@ -895,14 +895,18 @@ async function loadTenders() {
     const res  = await fetch(GET_URL);
     const data = await res.json();
     const raw  = data.tenders || data;
-    allTenders = Array.isArray(raw)
-      ? raw.filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent || 0) > 0)
-      : [];
+    const all  = Array.isArray(raw) ? raw : [];
+    allTenders = all.filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent || 0) > 0);
+    // DEBUG — remove after fix
+    document.getElementById('emptyState').querySelector('.empty-text').innerHTML =
+      'raw=' + all.length + ' filtered=' + allTenders.length +
+      (all[0] ? '<br>first: ' + all[0].title + ' / ' + all[0].matchPercent : '') +
+      (data.error ? '<br>err: ' + data.error : '');
     updateStats(allTenders);
     renderCards();
     setTime();
   } catch (e) {
-    showToast('Ошибка загрузки');
+    document.getElementById('emptyState').querySelector('.empty-text').innerHTML = 'FETCH ERR: ' + e.message;
     document.getElementById('emptyState').classList.add('show');
   } finally {
     setTimeout(() => document.getElementById('loader').classList.add('gone'), 700);
