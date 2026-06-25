@@ -678,10 +678,6 @@ a { text-decoration: none; color: inherit; }
     <div class="nav-btn-icon">⚡</div>
     <div class="nav-btn-label">Тендеры</div>
   </button>
-  <button class="nav-btn" id="navProfile" onclick="switchScreen('profile')">
-    <div class="nav-btn-icon">◎</div>
-    <div class="nav-btn-label">Профиль</div>
-  </button>
 </div>
 
 <!-- BOTTOM SHEET -->
@@ -895,18 +891,14 @@ async function loadTenders() {
     const res  = await fetch(GET_URL);
     const data = await res.json();
     const raw  = data.tenders || data;
-    const all  = Array.isArray(raw) ? raw : [];
-    allTenders = all.filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent || 0) > 0);
-    // DEBUG — remove after fix
-    document.getElementById('emptyState').querySelector('.empty-text').innerHTML =
-      'raw=' + all.length + ' filtered=' + allTenders.length +
-      (all[0] ? '<br>first: ' + all[0].title + ' / ' + all[0].matchPercent : '') +
-      (data.error ? '<br>err: ' + data.error : '');
+    allTenders = Array.isArray(raw)
+      ? raw.filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent || 0) > 0)
+      : [];
     updateStats(allTenders);
     renderCards();
     setTime();
   } catch (e) {
-    document.getElementById('emptyState').querySelector('.empty-text').innerHTML = 'FETCH ERR: ' + e.message;
+    showToast('Ошибка загрузки');
     document.getElementById('emptyState').classList.add('show');
   } finally {
     setTimeout(() => document.getElementById('loader').classList.add('gone'), 700);
