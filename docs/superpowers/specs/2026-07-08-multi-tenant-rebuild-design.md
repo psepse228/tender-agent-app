@@ -173,9 +173,15 @@ data.
 
 ## Frontend
 
-Keep the existing `index.html` Mini App and its established look (black
-background, DM Serif Display, Superhuman-inspired, verdict-stripe tender
-cards) — evolve it, don't replace it:
+Keep the existing `index.html` Mini App and its established look — evolve
+it, don't replace it. **Correction from an earlier draft of this spec**: the
+"Superhuman-inspired, DM Serif Display" description was based on a stale
+local copy. The actual current design (shipped 2026-06-28, commit
+`0e0e133`, "Glass Premium / Variant C") is already Solura's real brand
+fonts — **Syne + DM Sans** — on a darker base (`#050810`), with glassmorphism
+cards tinted by score color (green/amber/red), pill-shaped score badges with
+progress bars, backdrop-blur throughout, and Linear-style filter chips. This
+is the look to build on:
 - Add `initData` to every API call's Authorization header (mirrors
   Cortège's `tma <initData>` header scheme)
 - Add the new profile-chat panel/tab, matching the existing visual language
