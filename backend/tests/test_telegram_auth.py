@@ -51,3 +51,16 @@ def test_rejects_stale_auth_date():
 def test_rejects_missing_hash():
     with pytest.raises(InitDataError, match="missing hash"):
         validate_init_data("user=%7B%22id%22%3A111%7D&auth_date=123", BOT_TOKEN)
+
+
+def test_rejects_malformed_init_data():
+    with pytest.raises(InitDataError, match="malformed"):
+        validate_init_data("foobar", BOT_TOKEN)
+
+
+def test_rejects_non_numeric_auth_date():
+    fields = {"user": '{"id":111}', "auth_date": "not-a-number"}
+    init_data = sign_init_data(fields, BOT_TOKEN)
+
+    with pytest.raises(InitDataError, match="invalid auth_date"):
+        validate_init_data(init_data, BOT_TOKEN)
