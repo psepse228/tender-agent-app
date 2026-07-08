@@ -1,8 +1,11 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 from app.scraping.firecrawl import scrape_source
 from app.scraping.scoring import extract_and_score
+
+logger = logging.getLogger(__name__)
 
 SOURCES = [
     {"name": "eTender UzEx", "url": "https://etender.uzex.uz"},
@@ -39,6 +42,7 @@ def _process_source(source: dict, profile_text: str) -> dict:
         tenders = extract_and_score(markdown, source, profile_text)
         return {"name": source["name"], "status": "ok", "tenders": tenders}
     except Exception:
+        logger.exception("Failed to process source %s", source["name"])
         return {"name": source["name"], "status": "failed", "tenders": []}
 
 
@@ -66,6 +70,12 @@ def _to_row(tender: dict, tenant_id: str) -> dict:
 
 
 def refresh_tenant(tenant_id: str, client) -> dict:
+    """Shared refresh seam for the on-demand endpoint and the cron script (both TBD).
+
+    Scrapes all sources for the tenant, replaces ALL of its `tenders` rows with
+    the fresh results (even clearing them to empty if every source fails), and
+    updates `last_refresh_at`. Returns {"tenders": [...], "sources_status": [...]}.
+    """
     profile_text = _load_profile_text(tenant_id, client)
 
     with ThreadPoolExecutor(max_workers=len(SOURCES)) as pool:
