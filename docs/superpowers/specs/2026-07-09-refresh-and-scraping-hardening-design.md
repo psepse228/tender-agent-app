@@ -71,9 +71,12 @@ limit).
   cross-chunk duplicate-tender risk.
 - `backend/app/scraping/pipeline.py` — `refresh_tenant(tenant_id, client) ->
   dict`, the orchestration function described above. Scrapes all 6 sources
-  concurrently via `asyncio.gather(..., return_exceptions=True)` so one
-  source's failure never aborts the others (mirrors the Node version's
-  `Promise.allSettled`).
+  concurrently via a `ThreadPoolExecutor` (the scrape/score calls are
+  synchronous I/O — `httpx` and the OpenAI SDK — so real parallelism needs
+  threads, not `asyncio.gather` over sync calls, which would just run them
+  sequentially on one thread). Each source's scrape+score is wrapped in its
+  own try/except so one source's failure never aborts the others (mirrors
+  the Node version's `Promise.allSettled`).
 - `backend/app/routers/refresh.py` — `POST /api/refresh`. Thin: resolves
   `tenant_id` via the existing auth dependency, checks the cooldown, calls
   `refresh_tenant`, returns its result.
