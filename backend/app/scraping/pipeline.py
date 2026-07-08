@@ -46,6 +46,13 @@ def _process_source(source: dict, profile_text: str) -> dict:
         return {"name": source["name"], "status": "failed", "tenders": []}
 
 
+def _to_number(value) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _to_row(tender: dict, tenant_id: str) -> dict:
     return {
         "tenant_id": tenant_id,
@@ -55,12 +62,12 @@ def _to_row(tender: dict, tenant_id: str) -> dict:
         "deadline": tender.get("deadline") or "",
         "source": tender.get("source") or "",
         "platform": tender.get("platform") or "",
-        "match_percent": tender.get("matchPercent") or 0,
+        "match_percent": _to_number(tender.get("matchPercent")),
         "recommendation": tender.get("recommendation") or "",
-        "compliance": tender.get("compliance") or 0,
-        "financial": tender.get("financial") or 0,
-        "feasibility": tender.get("feasibility") or 0,
-        "win_chance": tender.get("winChance") or 0,
+        "compliance": _to_number(tender.get("compliance")),
+        "financial": _to_number(tender.get("financial")),
+        "feasibility": _to_number(tender.get("feasibility")),
+        "win_chance": _to_number(tender.get("winChance")),
         "why_participate": tender.get("whyParticipate") or "",
         "risks": tender.get("risks") or "",
         "action_plan": tender.get("actionPlan") or "",
@@ -84,7 +91,7 @@ def refresh_tenant(tenant_id: str, client) -> dict:
             pool.map(lambda source: _process_source(source, profile_text), SOURCES)
         )
 
-    tenders = [t for r in results for t in r["tenders"]]
+    tenders = [t for r in results for t in r["tenders"] if t.get("title")]
     sources_status = [
         {"name": r["name"], "status": r["status"], "count": len(r["tenders"])}
         for r in results

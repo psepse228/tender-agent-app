@@ -195,3 +195,60 @@ def test_process_source_returns_ok_with_zero_count_when_no_tenders_found(monkeyp
     )
 
     assert result == {"name": "eTender UzEx", "status": "ok", "tenders": []}
+
+
+def test_coerces_stringified_numeric_fields_before_insert(monkeypatch):
+    store = {"company_profile": [], "tenants": [{"id": TENANT_ID}], "tenders": []}
+
+    def fake_process(source, _profile_text):
+        if source["name"] == "eTender UzEx":
+            return {
+                "name": source["name"],
+                "status": "ok",
+                "tenders": [
+                    {
+                        "title": "Stringified numbers",
+                        "matchPercent": "75",
+                        "compliance": "80",
+                        "financial": "50",
+                        "feasibility": "60",
+                        "winChance": "40",
+                    }
+                ],
+            }
+        return {"name": source["name"], "status": "ok", "tenders": []}
+
+    monkeypatch.setattr("app.scraping.pipeline._process_source", fake_process)
+
+    refresh_tenant(TENANT_ID, _FakeClient(store))
+
+    row = next(r for r in store["tenders"] if r["title"] == "Stringified numbers")
+    assert row["match_percent"] == 75
+    assert row["compliance"] == 80
+    assert row["financial"] == 50
+    assert row["feasibility"] == 60
+    assert row["win_chance"] == 40
+
+
+def test_drops_tenders_with_no_title_before_insert(monkeypatch):
+    store = {"company_profile": [], "tenants": [{"id": TENANT_ID}], "tenders": []}
+
+    def fake_process(source, _profile_text):
+        if source["name"] == "eTender UzEx":
+            return {
+                "name": source["name"],
+                "status": "ok",
+                "tenders": [
+                    {"title": "", "matchPercent": 90},
+                    {"matchPercent": 90},
+                    {"title": "Valid tender", "matchPercent": 90},
+                ],
+            }
+        return {"name": source["name"], "status": "ok", "tenders": []}
+
+    monkeypatch.setattr("app.scraping.pipeline._process_source", fake_process)
+
+    result = refresh_tenant(TENANT_ID, _FakeClient(store))
+
+    assert [t["title"] for t in result["tenders"]] == ["Valid tender"]
+    assert [r["title"] for r in store["tenders"]] == ["Valid tender"]
