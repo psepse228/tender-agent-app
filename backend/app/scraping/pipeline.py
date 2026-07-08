@@ -70,7 +70,8 @@ def _to_row(tender: dict, tenant_id: str) -> dict:
 
 
 def refresh_tenant(tenant_id: str, client) -> dict:
-    """Shared refresh seam for the on-demand endpoint and the cron script (both TBD).
+    """Shared refresh seam called by `POST /api/refresh` (app/routers/refresh.py) and
+    the scheduled cron script (app/jobs/refresh_all_tenants.py).
 
     Scrapes all sources for the tenant, replaces ALL of its `tenders` rows with
     the fresh results (even clearing them to empty if every source fails), and

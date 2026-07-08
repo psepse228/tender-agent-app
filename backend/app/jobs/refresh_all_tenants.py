@@ -3,7 +3,6 @@ import logging
 from app.db import get_supabase_client
 from app.scraping.pipeline import refresh_tenant
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -21,4 +20,5 @@ def run() -> None:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     run()
