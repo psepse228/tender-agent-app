@@ -1,3 +1,5 @@
+import json
+
 import httpx
 
 from app.scraping.firecrawl import scrape_source
@@ -12,6 +14,14 @@ class _FakeResponse:
 
     def json(self):
         return self._json_data
+
+
+class _InvalidJsonResponse:
+    def __init__(self, status_code=200):
+        self.status_code = status_code
+
+    def json(self):
+        raise json.JSONDecodeError("Expecting value", "", 0)
 
 
 def test_returns_markdown_on_first_success(monkeypatch):
@@ -55,6 +65,34 @@ def test_retries_on_network_error(monkeypatch):
         raise httpx.ConnectError("boom")
 
     monkeypatch.setattr("app.scraping.firecrawl.httpx.post", raise_error)
+    sleeps = []
+
+    result = scrape_source(SOURCE, sleep=sleeps.append)
+
+    assert result is None
+    assert sleeps == [1, 2]
+
+
+def test_treats_error_shaped_200_response_as_retryable_failure(monkeypatch):
+    # A 200 with a null "data" field (e.g. {"success": false, "data": null}) must
+    # not raise AttributeError — it should be treated like any other failed attempt.
+    monkeypatch.setattr(
+        "app.scraping.firecrawl.httpx.post",
+        lambda *a, **k: _FakeResponse(200, {"success": False, "data": None, "error": "boom"}),
+    )
+    sleeps = []
+
+    result = scrape_source(SOURCE, sleep=sleeps.append)
+
+    assert result is None
+    assert sleeps == [1, 2]
+
+
+def test_treats_invalid_json_200_response_as_retryable_failure(monkeypatch):
+    monkeypatch.setattr(
+        "app.scraping.firecrawl.httpx.post",
+        lambda *a, **k: _InvalidJsonResponse(),
+    )
     sleeps = []
 
     result = scrape_source(SOURCE, sleep=sleeps.append)
