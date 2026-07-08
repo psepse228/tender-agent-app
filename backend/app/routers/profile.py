@@ -22,25 +22,14 @@ def save_profile(
     )
 
     client = get_supabase_client()
-    response = (
-        client.table("company_profile")
-        .select("id")
-        .eq("tenant_id", tenant_id)
-        .limit(1)
-        .execute()
-    )
-
-    if response.data:
-        client.table("company_profile").update(
-            {
-                "profile_text": profile_text,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-        ).eq("tenant_id", tenant_id).execute()
-    else:
-        client.table("company_profile").insert(
-            {"tenant_id": tenant_id, "profile_text": profile_text}
-        ).execute()
+    client.table("company_profile").upsert(
+        {
+            "tenant_id": tenant_id,
+            "profile_text": profile_text,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        on_conflict="tenant_id",
+    ).execute()
 
     return {"success": True}
 

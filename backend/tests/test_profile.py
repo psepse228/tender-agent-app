@@ -37,6 +37,10 @@ class _FakeTable:
         self._pending = ("update", values)
         return self
 
+    def upsert(self, row, on_conflict=None):
+        self._pending = ("upsert", row)
+        return self
+
     def execute(self):
         if self._pending:
             op, payload = self._pending
@@ -46,6 +50,16 @@ class _FakeTable:
                 for row in self.store.get(self.name, []):
                     if all(row.get(k) == v for k, v in self._filters.items()):
                         row.update(payload)
+            elif op == "upsert":
+                rows = self.store.setdefault(self.name, [])
+                existing = next(
+                    (r for r in rows if r.get("tenant_id") == payload.get("tenant_id")),
+                    None,
+                )
+                if existing is not None:
+                    existing.update(payload)
+                else:
+                    rows.append(payload)
             return SimpleNamespace(data=None)
 
         rows = [
