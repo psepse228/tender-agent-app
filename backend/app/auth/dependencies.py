@@ -7,7 +7,7 @@ from app.config import get_settings
 from app.db import get_supabase_client
 
 
-async def get_current_tenant_id(authorization: str = Header(...)) -> str:
+def get_current_tenant_id(authorization: str = Header(...)) -> str:
     if not authorization.startswith("tma "):
         raise HTTPException(
             status_code=401,
@@ -22,8 +22,11 @@ async def get_current_tenant_id(authorization: str = Header(...)) -> str:
     except InitDataError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
-    user = json.loads(pairs["user"])
-    telegram_user_id = user["id"]
+    try:
+        user = json.loads(pairs["user"])
+        telegram_user_id = user["id"]
+    except (KeyError, TypeError, json.JSONDecodeError):
+        raise HTTPException(status_code=401, detail="invalid user data in initData")
 
     client = get_supabase_client()
     response = (

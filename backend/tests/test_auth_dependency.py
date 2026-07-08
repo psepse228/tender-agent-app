@@ -104,3 +104,48 @@ def test_rejects_telegram_user_with_no_tenant(monkeypatch):
     )
 
     assert response.status_code == 403
+
+
+def test_rejects_init_data_missing_user_field():
+    app = _build_app()
+    client = TestClient(app)
+
+    fields = {"auth_date": str(int(time.time()))}
+    init_data = sign_init_data(fields, BOT_TOKEN)
+
+    response = client.get(
+        "/whoami",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_rejects_init_data_with_non_json_user_field():
+    app = _build_app()
+    client = TestClient(app)
+
+    fields = {"user": "not-json", "auth_date": str(int(time.time()))}
+    init_data = sign_init_data(fields, BOT_TOKEN)
+
+    response = client.get(
+        "/whoami",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_rejects_init_data_with_user_json_missing_id():
+    app = _build_app()
+    client = TestClient(app)
+
+    fields = {"user": '{"first_name":"Test"}', "auth_date": str(int(time.time()))}
+    init_data = sign_init_data(fields, BOT_TOKEN)
+
+    response = client.get(
+        "/whoami",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+
+    assert response.status_code == 401
