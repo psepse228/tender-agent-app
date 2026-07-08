@@ -1,0 +1,63 @@
+import httpx
+
+from app.scraping.firecrawl import scrape_source
+
+SOURCE = {"name": "BicoTender", "url": "https://bicotender.ru"}
+
+
+class _FakeResponse:
+    def __init__(self, status_code, json_data=None):
+        self.status_code = status_code
+        self._json_data = json_data or {}
+
+    def json(self):
+        return self._json_data
+
+
+def test_returns_markdown_on_first_success(monkeypatch):
+    monkeypatch.setattr(
+        "app.scraping.firecrawl.httpx.post",
+        lambda *a, **k: _FakeResponse(200, {"data": {"markdown": "# Tenders"}}),
+    )
+    sleeps = []
+
+    result = scrape_source(SOURCE, sleep=sleeps.append)
+
+    assert result == "# Tenders"
+    assert sleeps == []
+
+
+def test_retries_on_bad_gateway_then_succeeds(monkeypatch):
+    responses = iter(
+        [_FakeResponse(502), _FakeResponse(502), _FakeResponse(200, {"data": {"markdown": "ok"}})]
+    )
+    monkeypatch.setattr("app.scraping.firecrawl.httpx.post", lambda *a, **k: next(responses))
+    sleeps = []
+
+    result = scrape_source(SOURCE, sleep=sleeps.append)
+
+    assert result == "ok"
+    assert sleeps == [1, 2]
+
+
+def test_returns_none_after_all_retries_fail(monkeypatch):
+    monkeypatch.setattr("app.scraping.firecrawl.httpx.post", lambda *a, **k: _FakeResponse(502))
+    sleeps = []
+
+    result = scrape_source(SOURCE, sleep=sleeps.append)
+
+    assert result is None
+    assert sleeps == [1, 2]
+
+
+def test_retries_on_network_error(monkeypatch):
+    def raise_error(*_a, **_k):
+        raise httpx.ConnectError("boom")
+
+    monkeypatch.setattr("app.scraping.firecrawl.httpx.post", raise_error)
+    sleeps = []
+
+    result = scrape_source(SOURCE, sleep=sleeps.append)
+
+    assert result is None
+    assert sleeps == [1, 2]
