@@ -70,6 +70,16 @@ def test_uses_source_url_when_tender_has_no_own_url():
     assert result[0]["source"] == SOURCE["url"]
 
 
+def test_uses_tenders_own_url_when_present():
+    fake_client = _FakeOpenAI(
+        {"tenders": [{"title": "T", "matchPercent": 50, "url": "https://etender.uzex.uz/lot/123"}]}
+    )
+
+    result = extract_and_score("md", SOURCE, "profile", client=fake_client)
+
+    assert result[0]["source"] == "https://etender.uzex.uz/lot/123"
+
+
 def test_propagates_error_on_malformed_json_response():
     class _BadJSONClient:
         def __init__(self):
