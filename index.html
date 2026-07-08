@@ -664,15 +664,31 @@ a { text-decoration: none; color: inherit; }
 <div class="toast" id="toast"></div>
 
 <script>
-const GET_URL         = '/api/get-tenders';
-const REFRESH_URL     = '/api/tender-refresh';
-const PROFILE_URL     = '/api/save-profile';
-const N8N_WEBHOOK_URL = '';
+const GET_URL     = '/api/tenders';
+const REFRESH_URL = '/api/refresh';
+const PROFILE_URL = '/api/profile';
 
 let allTenders = [];
 let currentFilter = 'all';
 
 if (window.Telegram?.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
+
+function authHeaders() {
+  const initData = window.Telegram?.WebApp?.initData || '';
+  return { 'Authorization': 'tma ' + initData };
+}
+
+function normalizeTender(t) {
+  return {
+    ...t,
+    matchPercent:    t.matchPercent    ?? t.match_percent    ?? 0,
+    winChance:       t.winChance       ?? t.win_chance       ?? 0,
+    whyParticipate:  t.whyParticipate  ?? t.why_participate  ?? '',
+    actionPlan:      t.actionPlan      ?? t.action_plan      ?? '',
+    riskLevel:       t.riskLevel       ?? t.risk_level       ?? '',
+    profitPotential: t.profitPotential ?? t.profit_potential ?? '',
+  };
+}
 
 // ── SCREEN SWITCHING ──
 function switchScreen(name) {
@@ -859,11 +875,11 @@ function setTime() {
 
 async function loadTenders() {
   try {
-    const res  = await fetch(GET_URL);
+    const res  = await fetch(GET_URL, { headers: authHeaders() });
     const data = await res.json();
     const raw  = data.tenders || data;
     allTenders = Array.isArray(raw)
-      ? raw.filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent || 0) > 0)
+      ? raw.map(normalizeTender).filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent || 0) > 0)
       : [];
     updateStats(allTenders);
     renderCards();
@@ -881,36 +897,37 @@ async function refreshTenders() {
   btn.classList.add('spinning');
   showToast('Ищем тендеры... (1-2 мин)', 120000);
   try {
-    const useN8n = N8N_WEBHOOK_URL && !N8N_WEBHOOK_URL.startsWith('YOUR_');
-    const url    = useN8n ? N8N_WEBHOOK_URL : REFRESH_URL;
-    const ctrl   = new AbortController();
-    const timer  = setTimeout(() => ctrl.abort(), useN8n ? 120000 : 60000);
-    const res    = await fetch(url, {
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 60000);
+    const res   = await fetch(REFRESH_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: '{}',
       signal: ctrl.signal,
     });
     clearTimeout(timer);
-    const data = await res.json();
-    const raw  = data.tenders || data;
-    const normalize = t => ({
-      ...t,
-      matchPercent:    t.matchPercent    ?? t.match_percent    ?? 0,
-      winChance:       t.winChance       ?? t.win_chance       ?? 0,
-      whyParticipate:  t.whyParticipate  ?? t.why_participate  ?? '',
-      actionPlan:      t.actionPlan      ?? t.action_plan      ?? '',
-      riskLevel:       t.riskLevel       ?? t.risk_level       ?? '',
-      profitPotential: t.profitPotential ?? t.profit_potential ?? '',
-    });
+
+    if (res.status === 429) {
+      showToast('Обновлялось недавно, попробуй чуть позже');
+      return;
+    }
+
+    const data    = await res.json();
+    const raw     = data.tenders || data;
     const tenders = Array.isArray(raw)
-      ? raw.map(normalize).filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent || 0) > 0)
+      ? raw.map(normalizeTender).filter(t => t.title && t.title !== 'Без названия' && (t.matchPercent || 0) > 0)
       : [];
+
+    const failedSources = (data.sources_status || []).filter(s => s.status === 'failed');
+    const failedSuffix  = failedSources.length
+      ? ' · ' + failedSources.map(s => s.name).join(', ') + ' недоступен'
+      : '';
+
     if (tenders.length > 0) {
       allTenders = tenders; updateStats(allTenders); renderCards(); setTime();
-      showToast('Найдено ' + tenders.length + ' тендеров');
+      showToast('Найдено ' + tenders.length + ' тендеров' + failedSuffix);
     } else {
-      showToast('Новых тендеров не найдено');
+      showToast('Новых тендеров не найдено' + failedSuffix);
     }
   } catch (e) {
     showToast(e.name === 'AbortError' ? 'Превышено время ожидания' : 'Ошибка при обновлении');
