@@ -898,7 +898,7 @@ async function refreshTenders() {
   showToast('Ищем тендеры... (1-2 мин)', 120000);
   try {
     const ctrl  = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 60000);
+    const timer = setTimeout(() => ctrl.abort(), 100000);
     const res   = await fetch(REFRESH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -920,7 +920,7 @@ async function refreshTenders() {
 
     const failedSources = (data.sources_status || []).filter(s => s.status === 'failed');
     const failedSuffix  = failedSources.length
-      ? ' · ' + failedSources.map(s => s.name).join(', ') + ' недоступен'
+      ? ' · ' + failedSources.map(s => s.name).join(', ') + (failedSources.length > 1 ? ' недоступны' : ' недоступен')
       : '';
 
     if (tenders.length > 0) {
