@@ -11,7 +11,7 @@ SYSTEM_PROMPT_TEMPLATE = """You are a friendly assistant helping a company in Ta
 Current profile:
 {profile_text}
 
-Talk with the client conversationally to understand their business, services, experience, and what kinds of tenders they're looking for. After each message, update the profile to reflect everything learned so far -- a clear, well-organized free-text summary an AI can use later to score tenders for relevance to this company. Always preserve information from the current profile the client hasn't contradicted.
+Talk with the client conversationally to understand their business, services, experience, and what kinds of tenders they're looking for. After each message, update the profile to reflect everything learned so far -- a clear, well-organized free-text summary an AI can use later to score tenders for relevance to this company. Always preserve information from the current profile the client hasn't contradicted. Keep profile_text focused and well-organized rather than letting it grow indefinitely -- summarize and consolidate rather than appending verbatim.
 
 Return ONLY valid JSON: {{ "reply": "your conversational reply in Russian", "profile_text": "the full updated profile text" }}
 
@@ -29,14 +29,19 @@ def generate_reply(conversation: list[dict], profile_text: str, client=None) -> 
 
     messages = [{"role": "system", "content": system_prompt}]
     for msg in truncated_conversation:
-        role = "assistant" if msg["role"] == "bot" else "user"
+        if msg["role"] == "bot":
+            role = "assistant"
+        elif msg["role"] == "client":
+            role = "user"
+        else:
+            raise ValueError(f"unrecognized message role: {msg['role']!r}")
         messages.append({"role": role, "content": msg["content"]})
 
     response = client.chat.completions.create(
         model="gpt-4o",
         response_format={"type": "json_object"},
         messages=messages,
-        max_tokens=1500,
+        max_tokens=2500,
         temperature=0.4,
     )
 

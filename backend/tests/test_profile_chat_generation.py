@@ -81,3 +81,10 @@ def test_propagates_error_when_response_missing_required_keys():
 
     with pytest.raises(KeyError):
         generate_reply([{"role": "client", "content": "Hi"}], "", client=fake_client)
+
+
+def test_raises_on_unrecognized_message_role():
+    fake_client = _FakeOpenAI({"reply": "ok", "profile_text": "x"})
+
+    with pytest.raises(ValueError):
+        generate_reply([{"role": "system", "content": "x"}], "", client=fake_client)
