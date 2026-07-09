@@ -1,0 +1,362 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tender Agent — AI-агент для поиска тендеров</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050810;
+    --bg-soft: #0a0d16;
+    --surface: #0e1220;
+    --surface-raised: #131728;
+    --hairline: rgba(255, 255, 255, 0.09);
+    --hairline-soft: rgba(255, 255, 255, 0.06);
+    --ink: #f1f5f9;
+    --ink-soft: #94a3b8;
+    --ink-faint: rgba(148, 163, 184, 0.55);
+    --cyan: #38bdf8;
+    --violet: #818cf8;
+    --grad: linear-gradient(135deg, #38bdf8, #818cf8);
+    --green: #22c55e;
+    --yellow: #f59e0b;
+
+    --fs-eyebrow: 0.78rem;
+    --fs-small: 0.88rem;
+    --fs-body: 1.0625rem;
+    --fs-h3: 1.3rem;
+    --fs-h2: clamp(1.9rem, 4vw, 2.6rem);
+    --fs-display: clamp(2.8rem, 9vw, 5rem);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    font-size: var(--fs-body);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: rgba(56,189,248,0.2); color: var(--ink); }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: var(--fs-eyebrow);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    font-weight: 600;
+  }
+  .eyebrow::before { content: ''; width: 18px; height: 1px; background: var(--cyan); }
+
+  h1, h2, h3 {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  p { margin: 0; }
+  .prose { max-width: 62ch; color: var(--ink-soft); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    position: relative;
+    min-height: 92vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    overflow: hidden;
+    padding: 3rem 1.5rem;
+  }
+  .hero::before, .hero::after {
+    content: ''; position: absolute; border-radius: 50%; filter: blur(2px); z-index: 0;
+  }
+  .hero::before { width: 700px; height: 700px; top: -20%; right: -10%; background: rgba(56,189,248,0.1); }
+  .hero::after { width: 600px; height: 600px; bottom: -25%; left: -15%; background: rgba(129,140,248,0.09); }
+  .hero-inner { position: relative; z-index: 1; }
+  .hero .eyebrow { margin-bottom: 1.3rem; justify-content: center; }
+  .hero-logo {
+    width: 76px; height: 76px; border-radius: 22%;
+    background: var(--grad); margin: 0 auto 1.4rem;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 38px; color: var(--bg);
+    box-shadow: 0 0 50px rgba(56,189,248,.4);
+  }
+  .hero h1 { font-size: var(--fs-display); line-height: 0.98; }
+  .hero-tagline { margin: 1.3rem auto 0; max-width: 36ch; color: var(--ink-soft); font-size: 1.15rem; }
+  .hero-powered { margin-top: 2.6rem; font-size: var(--fs-small); color: var(--ink-faint); }
+
+  /* ---------- Sections ---------- */
+  section.block { padding: 5.5rem 0; border-top: 1px solid var(--hairline-soft); }
+  .block-head { margin-bottom: 2.2rem; }
+  .block-head h2 { margin-top: 0.5rem; }
+
+  /* ---------- Device panels (real app styling) ---------- */
+  .device {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    padding: 1.3rem;
+    box-shadow: 0 20px 50px -30px rgba(0, 0, 0, 0.6);
+  }
+  .device + .device { margin-top: 1rem; }
+  .device-label {
+    font-size: var(--fs-eyebrow); letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 0.9rem;
+  }
+
+  /* tender card mockup, matches real .card component */
+  .t-card { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 16px;
+    background: linear-gradient(135deg, rgba(34,197,94,.05), rgba(34,197,94,.02)); border: 1px solid rgba(34,197,94,.18); margin-bottom: 8px; }
+  .t-pill { padding: 6px 11px; border-radius: 10px; font-family: 'Manrope', sans-serif; font-size: 20px; font-weight: 800;
+    background: rgba(34,197,94,.12); color: var(--green); border: 1px solid rgba(34,197,94,.22); min-width: 50px; text-align: center; }
+  .t-info { flex: 1; min-width: 0; }
+  .t-title { font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+  .t-org { font-size: 10px; color: var(--ink-faint); margin-bottom: 6px; }
+  .t-tag { display: inline-block; font-size: 9px; padding: 2px 8px; border-radius: 6px; font-weight: 600;
+    color: var(--green); border: 1px solid rgba(34,197,94,.28); background: rgba(34,197,94,.07); }
+
+  /* chat mockup, matches real chat panel */
+  .chat-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 10px; }
+  .chat-row.out { justify-content: flex-end; }
+  .chat-avatar { width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0; background: var(--grad);
+    display: flex; align-items: center; justify-content: center; font-family: 'Manrope',sans-serif; font-size: 10px; font-weight: 800; color: var(--bg); }
+  .bubble { max-width: 78%; padding: 10px 13px; border-radius: 15px; font-size: 0.87rem; line-height: 1.5; }
+  .bubble.out { background: var(--grad); color: var(--bg); border-bottom-right-radius: 4px; font-weight: 500; }
+  .bubble.in { background: rgba(255,255,255,.04); border: 1px solid var(--hairline-soft); border-bottom-left-radius: 4px; }
+
+  /* stat row */
+  .stat-row { display: flex; gap: 0.6rem; }
+  .stat { flex: 1; background: rgba(255,255,255,.03); border: 1px solid var(--hairline-soft); border-radius: 14px; padding: 12px 10px; }
+  .stat.accent { background: linear-gradient(135deg, rgba(56,189,248,.1), rgba(129,140,248,.07)); border-color: rgba(56,189,248,.22); }
+  .stat b { display: block; font-family: 'Manrope', sans-serif; font-size: 1.5rem; font-weight: 800; letter-spacing: -.03em;
+    background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .stat.plain b { background: none; -webkit-text-fill-color: var(--ink); }
+  .stat span { display: block; font-size: 0.68rem; color: var(--ink-faint); margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
+
+  /* two-col grid */
+  .split { display: grid; grid-template-columns: 1fr; gap: 2.2rem; align-items: start; }
+  @media (min-width: 760px) {
+    .split { grid-template-columns: 1fr 1fr; }
+    .split.reverse .prose-col { order: 2; }
+  }
+  .prose-col h3 { font-size: var(--fs-h3); margin-bottom: 0.7rem; }
+  .prose-col p + p { margin-top: 0.8rem; }
+
+  /* problem list */
+  .pain-item { display: flex; gap: 1rem; padding: 1.1rem 0; border-top: 1px solid var(--hairline-soft); }
+  .pain-item:first-child { border-top: none; }
+  .pain-num { flex-shrink: 0; font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 1.6rem; color: rgba(239,68,68,0.3); width: 2.4rem; }
+  .pain-body h4 { margin: 0 0 0.3rem; font-size: 1rem; font-weight: 700; font-family: 'Manrope', sans-serif; }
+  .pain-body p { color: var(--ink-soft); font-size: var(--fs-small); }
+
+  /* roadmap */
+  .road-item { display: flex; gap: 1rem; padding: 1rem 0; border-top: 1px solid var(--hairline-soft); }
+  .road-item:first-child { border-top: none; }
+  .road-tag {
+    flex-shrink: 0; font-size: var(--fs-eyebrow); letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-faint); padding-top: 0.15rem; width: 6.5rem;
+  }
+  .road-tag.now { color: var(--cyan); }
+  .road-tag.next { color: var(--violet); }
+  .road-body h4 { margin: 0 0 0.3rem; font-size: 1rem; font-weight: 700; font-family: 'Manrope', sans-serif; }
+  .road-body p { color: var(--ink-soft); font-size: var(--fs-small); }
+
+  /* CTA */
+  .cta-box {
+    background: linear-gradient(135deg, rgba(56,189,248,.08), rgba(129,140,248,.06));
+    border: 1px solid rgba(56,189,248,.2); border-radius: 22px; padding: 2.4rem 1.8rem; text-align: center;
+  }
+  .cta-box h3 { font-size: 1.6rem; margin-bottom: 0.6rem; }
+  .cta-box p { color: var(--ink-soft); margin-bottom: 1.6rem; }
+  .cta-btn {
+    display: inline-block; background: var(--grad); color: var(--bg); font-family: 'Manrope', sans-serif;
+    font-weight: 700; font-size: 1rem; padding: 0.9rem 2rem; border-radius: 100px; text-decoration: none;
+  }
+
+  footer { padding: 4rem 0 3.5rem; text-align: center; }
+  footer .wordmark-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  footer .wordmark-logo { width: 30px; height: 30px; border-radius: 22%; background: var(--grad);
+    display: flex; align-items: center; justify-content: center; font-family: 'Manrope',sans-serif; font-weight: 800; font-size: 15px; color: var(--bg); }
+  footer .wordmark { font-family: 'Manrope', sans-serif; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; }
+  footer .line { color: var(--ink-faint); font-size: var(--fs-small); margin-top: 1rem; }
+  .accent-rule { width: 44px; height: 2px; background: var(--grad); margin: 1.6rem auto; border-radius: 2px; opacity: 0.8; }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Solura представляет</span>
+    <div class="hero-logo">T</div>
+    <h1>Tender Agent</h1>
+    <p class="hero-tagline">AI-агент, который сканирует тендерные площадки каждый день и находит те, что реально стоит подать</p>
+    <p class="hero-powered">powered by Solura</p>
+  </div>
+</section>
+
+<div class="wrap">
+
+  <section class="block">
+    <div class="block-head">
+      <span class="eyebrow">Проблема</span>
+      <h2>Тендеры не ждут, пока у вас найдётся время</h2>
+    </div>
+    <p class="prose" style="margin-bottom: 2rem;">
+      Хорошие тендеры разбросаны по шести разным площадкам — госзакупки, международные банки, отраслевые
+      агрегаторы. Проверять их вручную каждый день нереально, а пропущенный дедлайн — это упущенный контракт,
+      который уже не вернуть.
+    </p>
+    <div class="pain-item">
+      <div class="pain-num">01</div>
+      <div class="pain-body">
+        <h4>Шесть площадок, ноль уведомлений</h4>
+        <p>etender.uzex.uz, xt-xarid.uz, TenderWeek, ADB, World Bank, BicoTender — никто не следит за всеми сразу.</p>
+      </div>
+    </div>
+    <div class="pain-item">
+      <div class="pain-num">02</div>
+      <div class="pain-body">
+        <h4>Непонятно, стоит ли участвовать</h4>
+        <p>Бюджет, реальные шансы на победу, соответствие профилю компании — решение принимается на глаз.</p>
+      </div>
+    </div>
+    <div class="pain-item">
+      <div class="pain-num">03</div>
+      <div class="pain-body">
+        <h4>Время уходит не на подготовку заявки, а на поиск тендера</h4>
+        <p>Каждый час, потраченный на мониторинг площадок — это час, не потраченный на саму заявку.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="split">
+      <div class="prose-col">
+        <span class="eyebrow">Решение</span>
+        <h2 style="margin-top:0.5rem">AI сканирует, скорит и объясняет — вы решаете</h2>
+        <p>
+          Tender Agent каждый день проверяет все шесть площадок, извлекает тендеры и оценивает каждый по
+          реальному профилю компании: соответствие, финансы, реализуемость, шанс на победу.
+        </p>
+        <p>
+          Никаких догадок по ключевым словам — только конкретный процент и объяснение, почему стоит (или не
+          стоит) подавать заявку.
+        </p>
+      </div>
+      <div>
+        <div class="device">
+          <div class="device-label">Найденные тендеры</div>
+          <div class="t-card">
+            <div class="t-pill">94</div>
+            <div class="t-info">
+              <div class="t-title">Тендер на аудиторские услуги</div>
+              <div class="t-org">Госзакупки · до 28 июля</div>
+              <span class="t-tag">Подать заявку</span>
+            </div>
+          </div>
+          <div class="t-card" style="background:linear-gradient(135deg,rgba(245,158,11,.05),rgba(245,158,11,.02));border-color:rgba(245,158,11,.18);">
+            <div class="t-pill" style="background:rgba(245,158,11,.12);color:#f59e0b;border-color:rgba(245,158,11,.22);">58</div>
+            <div class="t-info">
+              <div class="t-title">Консалтинг по МСФО отчётности</div>
+              <div class="t-org">ADB · до 12 августа</div>
+              <span class="t-tag" style="color:#f59e0b;border-color:rgba(245,158,11,.28);background:rgba(245,158,11,.07);">Рассмотреть</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="split reverse">
+      <div>
+        <div class="device">
+          <div class="device-label">Обзор · сегодня</div>
+          <div class="stat-row">
+            <div class="stat accent"><b>24</b><span>Найдено</span></div>
+            <div class="stat plain"><b style="color:var(--green);-webkit-text-fill-color:var(--green);">9</b><span>К подаче</span></div>
+            <div class="stat plain"><b>67%</b><span>Ср. балл</span></div>
+          </div>
+        </div>
+        <div class="device">
+          <div class="device-label">AI Ассистент</div>
+          <div class="chat-row">
+            <div class="chat-avatar">T</div>
+            <div class="bubble in">Расскажи о своей компании — чем занимаетесь, какой опыт?</div>
+          </div>
+          <div class="chat-row out">
+            <div class="bubble out">Аудиторская компания, 8 лет опыта, МСФО и финансовый консалтинг</div>
+          </div>
+        </div>
+      </div>
+      <div class="prose-col">
+        <span class="eyebrow">Профиль в чате</span>
+        <h2 style="margin-top:0.5rem">Не форма — разговор</h2>
+        <p>
+          Вместо анкеты из шестнадцати полей — обычный диалог. Расскажите об опыте, услугах, сертификатах —
+          AI-ассистент сам соберёт из этого профиль, по которому будут скориться все будущие тендеры.
+        </p>
+        <p>
+          Профиль можно уточнять в любой момент — просто напишите ассистенту, что изменилось.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="eyebrow">Куда движемся</span>
+      <h2>Сегодня — закрытая бета, дальше — открытый доступ</h2>
+    </div>
+    <div class="road-item">
+      <div class="road-tag now">Сейчас</div>
+      <div class="road-body">
+        <h4>Закрытая бета в Ташкенте</h4>
+        <p>Компании подключаются вручную, бесплатно — тестируем на реальных тендерах, собираем обратную связь.</p>
+      </div>
+    </div>
+    <div class="road-item">
+      <div class="road-tag next">Далее</div>
+      <div class="road-body">
+        <h4>Открытая регистрация и тарифы</h4>
+        <p>Самостоятельное подключение без ручной настройки, гибкая модель оплаты по мере роста базы.</p>
+      </div>
+    </div>
+    <div class="road-item">
+      <div class="road-tag">Неизменно</div>
+      <div class="road-body">
+        <h4>Шесть источников, ежедневное обновление</h4>
+        <p>Дашборд и AI-скоринг — то, что остаётся ядром продукта независимо от тарифа.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" style="border-top: none; padding-top: 0;">
+    <div class="cta-box">
+      <h3>Попробовать в бете</h3>
+      <p>Бесплатно на время беты. Подключаем вручную в течение дня.</p>
+      <a class="cta-btn" href="#">Написать в Telegram →</a>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wordmark-row">
+    <div class="wordmark-logo">T</div>
+    <div class="wordmark">Tender Agent</div>
+  </div>
+  <div class="accent-rule"></div>
+  <p class="line">Разработано студией Solura · @solura.agency</p>
+</footer>
+
+</body>
+</html>

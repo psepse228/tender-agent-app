@@ -7,7 +7,7 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -29,7 +29,7 @@
   --border:   rgba(255,255,255,0.07);
   --border-c: rgba(56,189,248,0.2);
   --grad:     linear-gradient(135deg, #38bdf8, #818cf8);
-  --fd:       'Syne', sans-serif;
+  --fd:       'Manrope', sans-serif;
   --fb:       'DM Sans', sans-serif;
   --r:        16px;
   --r-sm:     10px;
@@ -76,10 +76,10 @@ a { text-decoration: none; color: inherit; }
 #loader.gone { opacity: 0; pointer-events: none; }
 .loader-logo { display: flex; align-items: center; gap: 10px; }
 .loader-mark {
-  width: 38px; height: 38px; border-radius: 11px;
+  width: 38px; height: 38px; border-radius: 22%;
   background: var(--grad);
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--fd); font-size: 17px; font-weight: 800;
+  font-family: var(--fd); font-size: 18px; font-weight: 800;
   color: var(--bg); box-shadow: 0 0 28px rgba(56,189,248,.35);
 }
 .loader-wordmark { font-family: var(--fd); font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
@@ -108,10 +108,10 @@ a { text-decoration: none; color: inherit; }
   font-family: var(--fd); font-size: 16px; font-weight: 800; letter-spacing: -.02em;
 }
 .logo-mark {
-  width: 30px; height: 30px; border-radius: 9px;
+  width: 30px; height: 30px; border-radius: 22%;
   background: var(--grad);
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 800; color: var(--bg);
+  font-family: var(--fd); font-size: 14px; font-weight: 800; color: var(--bg);
   box-shadow: 0 0 16px rgba(56,189,248,.32);
 }
 .header-right { display: flex; align-items: center; gap: 8px; }
