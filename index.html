@@ -531,7 +531,7 @@ a { text-decoration: none; color: inherit; }
   <div class="cards" id="cardsContainer"></div>
   <div class="empty" id="emptyState">
     <div class="empty-icon">◎</div>
-    <div class="empty-text">Тендеров не найдено.<br>Нажми ↻ чтобы запустить поиск.</div>
+    <div class="empty-text" id="emptyText">Тендеров не найдено.<br>Нажми ↻ чтобы запустить поиск.</div>
   </div>
 </div>
 
@@ -667,6 +667,9 @@ a { text-decoration: none; color: inherit; }
 const GET_URL     = '/api/tenders';
 const REFRESH_URL = '/api/refresh';
 const PROFILE_URL = '/api/profile';
+
+const DEFAULT_EMPTY_TEXT = 'Тендеров не найдено.<br>Нажми ↻ чтобы запустить поиск.';
+const NUDGE_EMPTY_TEXT   = 'Сначала настрой профиль компании — это поможет AI точнее находить тендеры.<br>Затем нажми ↻ чтобы запустить поиск.';
 
 let allTenders = [];
 let currentFilter = 'all';
@@ -883,12 +886,35 @@ async function loadTenders() {
       : [];
     updateStats(allTenders);
     renderCards();
+    if (allTenders.length === 0) await checkProfileExists();
     setTime();
   } catch (e) {
     showToast('Ошибка загрузки');
     document.getElementById('emptyState').classList.add('show');
   } finally {
     setTimeout(() => document.getElementById('loader').classList.add('gone'), 700);
+  }
+}
+
+async function checkProfileExists() {
+  const emptyTextEl  = document.getElementById('emptyText');
+  const emptyStateEl = document.getElementById('emptyState');
+  try {
+    const res  = await fetch(PROFILE_URL, { headers: authHeaders() });
+    const data = await res.json();
+    if (!data.profile_text) {
+      emptyTextEl.innerHTML = NUDGE_EMPTY_TEXT;
+      emptyStateEl.onclick = () => switchScreen('profile');
+      emptyStateEl.style.cursor = 'pointer';
+    } else {
+      emptyTextEl.innerHTML = DEFAULT_EMPTY_TEXT;
+      emptyStateEl.onclick = null;
+      emptyStateEl.style.cursor = 'default';
+    }
+  } catch (e) {
+    emptyTextEl.innerHTML = DEFAULT_EMPTY_TEXT;
+    emptyStateEl.onclick = null;
+    emptyStateEl.style.cursor = 'default';
   }
 }
 
@@ -972,7 +998,7 @@ async function saveProfile() {
   try {
     const res  = await fetch(PROFILE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ updates })
     });
     const data = await res.json();
