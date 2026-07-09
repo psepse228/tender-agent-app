@@ -392,9 +392,7 @@ a { text-decoration: none; color: inherit; }
   border: 1px solid var(--border); box-shadow: none; cursor: default;
 }
 
-/* ─── PROFILE SCREEN ─── */
-.profile-screen { padding: 20px 16px 0; }
-.profile-header { margin-bottom: 24px; }
+/* ─── PROFILE CHAT ─── */
 .profile-title {
   font-family: var(--fd); font-size: 24px; font-weight: 800;
   letter-spacing: -.03em; line-height: 1.2; margin-bottom: 6px;
@@ -404,57 +402,31 @@ a { text-decoration: none; color: inherit; }
 }
 .profile-sub { font-size: 12px; color: rgba(148,163,184,.55); font-weight: 300; }
 
-.profile-section { margin-bottom: 24px; }
-.profile-section-label {
-  font-size: 9px; color: var(--cyan); text-transform: uppercase;
-  letter-spacing: .2em; margin-bottom: 10px; font-weight: 700;
-  display: flex; align-items: center; gap: 8px;
+.chat-screen { display: flex; flex-direction: column; min-height: calc(100vh - 140px); padding: 0 16px; }
+.chat-header { padding: 20px 0 16px; }
+.chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px 0 12px; }
+.chat-bubble { max-width: 82%; padding: 11px 14px; border-radius: 16px; font-size: 13px; line-height: 1.6; animation: fadeIn .25s ease both; }
+.chat-bubble.client { align-self: flex-end; background: var(--grad); color: var(--bg); border-bottom-right-radius: 4px; font-weight: 500; }
+.chat-bubble.bot { align-self: flex-start; background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--white); border-bottom-left-radius: 4px; }
+.chat-bubble.typing { display: flex; gap: 4px; align-items: center; padding: 13px 16px; }
+.chat-typing-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--silver); animation: typingPulse 1.2s ease-in-out infinite; }
+.chat-typing-dot:nth-child(2) { animation-delay: .2s; }
+.chat-typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes typingPulse { 0%,60%,100%{opacity:.3} 30%{opacity:1} }
+.chat-input-row { display: flex; gap: 8px; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+.chat-input {
+  flex: 1; background: rgba(255,255,255,.03); border: 1px solid var(--border);
+  border-radius: 13px; padding: 12px 14px; color: var(--white); font-family: var(--fb);
+  font-size: 13px; outline: none;
 }
-.profile-section-label::before { content: ''; width: 18px; height: 1px; background: var(--cyan); }
-
-.field-group { display: flex; flex-direction: column; gap: 7px; }
-.field-row {
-  background: rgba(255,255,255,.03); border: 1px solid var(--border);
-  border-radius: 13px; padding: 12px 14px;
-  transition: border-color .2s, box-shadow .2s;
+.chat-input:focus { border-color: rgba(56,189,248,.35); }
+.chat-input:disabled { opacity: .5; }
+.chat-send-btn {
+  width: 44px; height: 44px; border-radius: 13px; flex-shrink: 0;
+  background: var(--grad); border: none; color: var(--bg); font-size: 17px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
-.field-row:focus-within {
-  border-color: rgba(56,189,248,.35);
-  box-shadow: 0 0 0 3px rgba(56,189,248,.06);
-}
-.field-label {
-  font-size: 9px; color: rgba(148,163,184,.5); text-transform: uppercase;
-  letter-spacing: .1em; margin-bottom: 6px; font-weight: 600;
-}
-.field-input {
-  width: 100%; background: none; border: none; outline: none;
-  color: var(--white); font-family: var(--fb);
-  font-size: 13px; font-weight: 400; resize: none;
-  caret-color: var(--cyan);
-}
-.field-input::placeholder { color: rgba(255,255,255,.16); }
-.field-input.textarea { min-height: 60px; line-height: 1.55; }
-.field-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-
-.save-profile-btn {
-  width: 100%; padding: 15px;
-  background: var(--grad); border: none; border-radius: 13px;
-  font-family: var(--fd); font-size: 14px; font-weight: 700;
-  color: var(--bg); cursor: pointer;
-  box-shadow: 0 4px 24px rgba(56,189,248,.22);
-  transition: opacity .2s, transform .2s;
-  margin-top: 8px; margin-bottom: 24px; letter-spacing: .01em;
-}
-.save-profile-btn:active { opacity: .85; transform: scale(.98); }
-.save-profile-btn.saving { opacity: .55; pointer-events: none; }
-
-.profile-status {
-  text-align: center; font-size: 11px; color: var(--silver);
-  margin-bottom: 16px; display: none; font-weight: 300; line-height: 1.6;
-}
-.profile-status.show { display: block; }
-.profile-status.success { color: var(--green); }
-.profile-status.error   { color: var(--red); }
+.chat-send-btn:disabled { opacity: .5; cursor: default; }
 
 /* ─── TOAST ─── */
 .toast {
@@ -535,114 +507,18 @@ a { text-decoration: none; color: inherit; }
   </div>
 </div>
 
-<!-- SCREEN: PROFILE -->
+<!-- SCREEN: PROFILE CHAT -->
 <div class="screen" id="screenProfile">
-  <div class="profile-screen">
-    <div class="profile-header">
+  <div class="chat-screen">
+    <div class="chat-header">
       <div class="profile-title">Профиль компании</div>
-      <div class="profile-sub">AI анализирует тендеры на основе этих данных</div>
+      <div class="profile-sub">Опиши свою компанию в чате — AI обновит профиль для поиска тендеров</div>
     </div>
-
-    <div class="profile-section">
-      <div class="profile-section-label">Основное</div>
-      <div class="field-group">
-        <div class="field-row">
-          <div class="field-label">Название компании</div>
-          <input class="field-input" id="f-company-name" placeholder="Введите название" type="text">
-        </div>
-        <div class="field-row">
-          <div class="field-label">Локация</div>
-          <input class="field-input" id="f-location" placeholder="Tashkent, Uzbekistan" type="text">
-        </div>
-        <div class="field-row">
-          <div class="field-label">Языки</div>
-          <input class="field-input" id="f-languages" placeholder="Russian, Uzbek, English" type="text">
-        </div>
-        <div class="field-row-2">
-          <div class="field-row">
-            <div class="field-label">Лет опыта</div>
-            <input class="field-input" id="f-exp-years" placeholder="8" type="number">
-          </div>
-          <div class="field-row">
-            <div class="field-label">Размер команды</div>
-            <input class="field-input" id="f-team-size" placeholder="15" type="number">
-          </div>
-        </div>
-      </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chatInput" type="text" placeholder="Напиши сообщение..." onkeydown="if(event.key==='Enter')sendChatMessage()">
+      <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()">→</button>
     </div>
-
-    <div class="profile-section">
-      <div class="profile-section-label">Услуги и опыт</div>
-      <div class="field-group">
-        <div class="field-row">
-          <div class="field-label">Услуги</div>
-          <textarea class="field-input textarea" id="f-services" placeholder="Financial consulting, audit, strategy, ESG..."></textarea>
-        </div>
-        <div class="field-row">
-          <div class="field-label">Ключевые слова для поиска</div>
-          <input class="field-input" id="f-keywords" placeholder="аудит, финансы, бухгалтерия, ESG...">
-        </div>
-        <div class="field-row">
-          <div class="field-label">Предыдущие проекты</div>
-          <textarea class="field-input textarea" id="f-prev-projects" placeholder="Опишите 3 релевантных проекта..."></textarea>
-        </div>
-        <div class="field-row">
-          <div class="field-label">Релевантный опыт</div>
-          <textarea class="field-input textarea" id="f-rel-exp" placeholder="Опыт в аудите, МСФО, финансовой отчётности..."></textarea>
-        </div>
-      </div>
-    </div>
-
-    <div class="profile-section">
-      <div class="profile-section-label">Финансы и условия</div>
-      <div class="field-group">
-        <div class="field-row-2">
-          <div class="field-row">
-            <div class="field-label">Мин. контракт (UZS)</div>
-            <input class="field-input" id="f-min-contract" placeholder="5,000,000" type="text">
-          </div>
-          <div class="field-row">
-            <div class="field-label">Макс. контракт (UZS)</div>
-            <input class="field-input" id="f-max-contract" placeholder="500,000,000" type="text">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="profile-section">
-      <div class="profile-section-label">Статистика и достижения</div>
-      <div class="field-group">
-        <div class="field-row-2">
-          <div class="field-row">
-            <div class="field-label">Всего заявок</div>
-            <input class="field-input" id="f-total-bids" placeholder="0" type="number">
-          </div>
-          <div class="field-row">
-            <div class="field-label">Побед</div>
-            <input class="field-input" id="f-total-wins" placeholder="0" type="number">
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field-label">Вовремя сдача (%)</div>
-          <input class="field-input" id="f-on-time" placeholder="95" type="number">
-        </div>
-        <div class="field-row">
-          <div class="field-label">Сертификаты</div>
-          <input class="field-input" id="f-certifications" placeholder="ISO 9001, CPA...">
-        </div>
-        <div class="field-row">
-          <div class="field-label">Награды</div>
-          <input class="field-input" id="f-awards" placeholder="Best Audit Firm 2024...">
-        </div>
-        <div class="field-row">
-          <div class="field-label">Ключевые члены команды</div>
-          <textarea class="field-input textarea" id="f-team-members" placeholder="CEO: Иванов И.И. — 15 лет в аудите..."></textarea>
-        </div>
-      </div>
-    </div>
-
-    <div class="profile-status" id="profileStatus"></div>
-    <button class="save-profile-btn" id="saveBtn" onclick="saveProfile()">Сохранить профиль</button>
   </div>
 </div>
 
@@ -709,6 +585,7 @@ function switchScreen(name) {
     document.getElementById('screenProfile').classList.add('active');
     document.getElementById('navProfile').classList.add('active');
     document.getElementById('refreshBtn').style.display = 'none';
+    loadProfileChat();
   }
 }
 
@@ -968,60 +845,85 @@ async function refreshTenders() {
   }
 }
 
-// ── PROFILE ──
-const PROFILE_FIELDS = [
-  { id: 'f-company-name',  field: 'Company Name' },
-  { id: 'f-location',      field: 'Location' },
-  { id: 'f-languages',     field: 'Languages' },
-  { id: 'f-exp-years',     field: 'Experience Years' },
-  { id: 'f-team-size',     field: 'Team Size' },
-  { id: 'f-services',      field: 'Services' },
-  { id: 'f-keywords',      field: 'Keywords' },
-  { id: 'f-prev-projects', field: 'Previous Projects' },
-  { id: 'f-rel-exp',       field: 'Relevant Experience' },
-  { id: 'f-min-contract',  field: 'Min Contract UZS' },
-  { id: 'f-max-contract',  field: 'Max Contract UZS' },
-  { id: 'f-total-bids',    field: 'Total bids submitted' },
-  { id: 'f-total-wins',    field: 'Total Wins' },
-  { id: 'f-on-time',       field: 'On time delivery' },
-  { id: 'f-certifications',field: 'Certifications' },
-  { id: 'f-awards',        field: 'Awards' },
-  { id: 'f-team-members',  field: 'Key team members' },
-];
+// ── PROFILE CHAT ──
+let chatSending = false;
 
-async function saveProfile() {
-  const btn    = document.getElementById('saveBtn');
-  const status = document.getElementById('profileStatus');
-  btn.classList.add('saving');
-  btn.textContent = 'Сохранение...';
+function renderChatMessage(role, content) {
+  const container = document.getElementById('chatMessages');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble ' + (role === 'client' ? 'client' : 'bot');
+  bubble.textContent = content;
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+}
 
-  const updates = {};
-  PROFILE_FIELDS.forEach(f => {
-    const el = document.getElementById(f.id);
-    if (el && el.value.trim()) updates[f.field] = el.value.trim();
-  });
+function showTypingIndicator() {
+  const container = document.getElementById('chatMessages');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble bot typing';
+  bubble.id = 'typingIndicator';
+  bubble.innerHTML = '<div class="chat-typing-dot"></div><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div>';
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+}
 
+function hideTypingIndicator() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+async function loadProfileChat() {
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = '';
   try {
-    const res  = await fetch(PROFILE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ updates })
-    });
+    const res  = await fetch('/api/profile-chat', { headers: authHeaders() });
     const data = await res.json();
-    if (data.success) {
-      status.textContent = '✓ Профиль сохранён — AI обновит анализ при следующем запуске';
-      status.className = 'profile-status show success';
-      showToast('✓ Профиль сохранён');
+    const messages = data.messages || [];
+    if (messages.length === 0) {
+      renderChatMessage('bot', 'Привет! Расскажи о своей компании — чем вы занимаетесь, какой у вас опыт, какие тендеры вам интересны. Это поможет AI точнее находить подходящие тендеры.');
     } else {
-      throw new Error('Save failed');
+      messages.forEach(m => renderChatMessage(m.role, m.content));
     }
   } catch (e) {
-    status.textContent = '✕ Ошибка при сохранении — попробуй ещё раз';
-    status.className = 'profile-status show error';
-    showToast('Ошибка при сохранении');
+    showToast('Ошибка загрузки чата');
+  }
+}
+
+async function sendChatMessage() {
+  if (chatSending) return;
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if (!message) return;
+
+  const btn = document.getElementById('chatSendBtn');
+  chatSending = true;
+  input.disabled = true;
+  btn.disabled = true;
+  renderChatMessage('client', message);
+  input.value = '';
+  showTypingIndicator();
+
+  try {
+    const res = await fetch('/api/profile-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ message }),
+    });
+    hideTypingIndicator();
+    if (!res.ok) {
+      showToast('Ошибка при отправке сообщения');
+      return;
+    }
+    const data = await res.json();
+    renderChatMessage('bot', data.reply);
+  } catch (e) {
+    hideTypingIndicator();
+    showToast('Ошибка при отправке сообщения');
   } finally {
-    btn.classList.remove('saving');
-    btn.textContent = 'Сохранить профиль';
+    chatSending = false;
+    input.disabled = false;
+    btn.disabled = false;
+    input.focus();
   }
 }
 
