@@ -652,6 +652,10 @@ a { text-decoration: none; color: inherit; }
     <div class="nav-btn-icon">⚡</div>
     <div class="nav-btn-label">Тендеры</div>
   </button>
+  <button class="nav-btn" id="navProfile" onclick="switchScreen('profile')">
+    <div class="nav-btn-icon">◆</div>
+    <div class="nav-btn-label">Профиль</div>
+  </button>
 </div>
 
 <!-- BOTTOM SHEET -->
@@ -896,6 +900,12 @@ async function loadTenders() {
   }
 }
 
+function resetEmptyStateToDefault(emptyTextEl, emptyStateEl) {
+  emptyTextEl.innerHTML = DEFAULT_EMPTY_TEXT;
+  emptyStateEl.onclick = null;
+  emptyStateEl.style.cursor = 'default';
+}
+
 async function checkProfileExists() {
   const emptyTextEl  = document.getElementById('emptyText');
   const emptyStateEl = document.getElementById('emptyState');
@@ -907,14 +917,10 @@ async function checkProfileExists() {
       emptyStateEl.onclick = () => switchScreen('profile');
       emptyStateEl.style.cursor = 'pointer';
     } else {
-      emptyTextEl.innerHTML = DEFAULT_EMPTY_TEXT;
-      emptyStateEl.onclick = null;
-      emptyStateEl.style.cursor = 'default';
+      resetEmptyStateToDefault(emptyTextEl, emptyStateEl);
     }
   } catch (e) {
-    emptyTextEl.innerHTML = DEFAULT_EMPTY_TEXT;
-    emptyStateEl.onclick = null;
-    emptyStateEl.style.cursor = 'default';
+    resetEmptyStateToDefault(emptyTextEl, emptyStateEl);
   }
 }
 
