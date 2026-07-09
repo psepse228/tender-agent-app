@@ -12,7 +12,7 @@ app.include_router(refresh.router)
 app.include_router(profile.router)
 app.include_router(profile_chat.router)
 
-INDEX_HTML_PATH = Path(__file__).resolve().parent.parent.parent / "index.html"
+INDEX_HTML_PATH = Path(__file__).resolve().parent.parent / "index.html"
 
 
 @app.get("/", include_in_schema=False)
