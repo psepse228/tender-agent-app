@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import Header, HTTPException
 
@@ -6,9 +7,16 @@ from app.auth.telegram import InitDataError, validate_init_data
 from app.config import get_settings
 from app.db import get_supabase_client
 
+logger = logging.getLogger(__name__)
+
 
 def get_current_tenant_id(authorization: str = Header(...)) -> str:
     if not authorization.startswith("tma "):
+        logger.warning(
+            "auth rejected: bad scheme, header starts with %r (len=%d)",
+            authorization[:10],
+            len(authorization),
+        )
         raise HTTPException(
             status_code=401,
             detail="Authorization header must use the 'tma <initData>' scheme",
@@ -20,6 +28,12 @@ def get_current_tenant_id(authorization: str = Header(...)) -> str:
     try:
         pairs = validate_init_data(init_data, settings.telegram_bot_token)
     except InitDataError as e:
+        logger.warning(
+            "auth rejected: %s (init_data length=%d, bot_token_len=%d)",
+            str(e),
+            len(init_data),
+            len(settings.telegram_bot_token),
+        )
         raise HTTPException(status_code=401, detail=str(e))
 
     try:
