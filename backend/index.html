@@ -402,12 +402,35 @@ a { text-decoration: none; color: inherit; }
 }
 .profile-sub { font-size: 12px; color: rgba(148,163,184,.55); font-weight: 300; }
 
+.chat-eyebrow {
+  font-size: 9px; color: var(--cyan); letter-spacing: .2em;
+  text-transform: uppercase; font-weight: 600; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.chat-eyebrow::before { content: ''; width: 18px; height: 1px; background: var(--cyan); }
+
 .chat-screen { display: flex; flex-direction: column; min-height: calc(100vh - 140px); padding: 0 16px; }
 .chat-header { padding: 20px 0 16px; }
-.chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px 0 12px; }
-.chat-bubble { max-width: 82%; padding: 11px 14px; border-radius: 16px; font-size: 13px; line-height: 1.6; animation: fadeIn .25s ease both; }
-.chat-bubble.client { align-self: flex-end; background: var(--grad); color: var(--bg); border-bottom-right-radius: 4px; font-weight: 500; }
-.chat-bubble.bot { align-self: flex-start; background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--white); border-bottom-left-radius: 4px; }
+.chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px 0 12px; }
+
+.chat-row { display: flex; align-items: flex-end; gap: 8px; animation: fadeIn .25s ease both; }
+.chat-row.client { justify-content: flex-end; }
+.chat-row.bot { justify-content: flex-start; }
+
+.chat-avatar {
+  width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+  background: var(--grad); display: flex; align-items: center; justify-content: center;
+  font-family: var(--fd); font-size: 11px; font-weight: 800; color: var(--bg);
+  box-shadow: 0 0 12px rgba(56,189,248,.28);
+}
+
+.chat-bubble { max-width: 78%; padding: 11px 14px; border-radius: 16px; font-size: 13px; line-height: 1.6; }
+.chat-bubble.client { background: var(--grad); color: var(--bg); border-bottom-right-radius: 4px; font-weight: 500; }
+.chat-bubble.bot { background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--white); border-bottom-left-radius: 4px; }
+.chat-bubble-text { white-space: pre-wrap; }
+.chat-bubble-time { font-size: 9px; margin-top: 4px; opacity: .55; text-align: right; }
+.chat-bubble.client .chat-bubble-time { color: var(--bg); }
+.chat-bubble.bot .chat-bubble-time { color: var(--silver); }
 .chat-bubble.typing { display: flex; gap: 4px; align-items: center; padding: 13px 16px; }
 .chat-typing-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--silver); animation: typingPulse 1.2s ease-in-out infinite; }
 .chat-typing-dot:nth-child(2) { animation-delay: .2s; }
@@ -507,12 +530,13 @@ a { text-decoration: none; color: inherit; }
   </div>
 </div>
 
-<!-- SCREEN: PROFILE CHAT -->
+<!-- SCREEN: AI ASSISTANT -->
 <div class="screen" id="screenProfile">
   <div class="chat-screen">
     <div class="chat-header">
-      <div class="profile-title">Профиль компании</div>
-      <div class="profile-sub">Опиши свою компанию в чате — AI обновит профиль для поиска тендеров</div>
+      <div class="chat-eyebrow">AI · Ассистент</div>
+      <div class="profile-title">AI Ассистент</div>
+      <div class="profile-sub">Расскажи о компании — ассистент соберёт профиль для точного поиска тендеров</div>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
     <div class="chat-input-row">
@@ -530,7 +554,7 @@ a { text-decoration: none; color: inherit; }
   </button>
   <button class="nav-btn" id="navProfile" onclick="switchScreen('profile')">
     <div class="nav-btn-icon">◆</div>
-    <div class="nav-btn-label">Профиль</div>
+    <div class="nav-btn-label">Ассистент</div>
   </button>
 </div>
 
@@ -849,22 +873,60 @@ async function refreshTenders() {
 // ── PROFILE CHAT ──
 let chatSending = false;
 
-function renderChatMessage(role, content) {
+function formatChatTime(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderChatMessage(role, content, timestamp) {
   const container = document.getElementById('chatMessages');
+  const isClient = role === 'client';
+
+  const row = document.createElement('div');
+  row.className = 'chat-row ' + (isClient ? 'client' : 'bot');
+
+  if (!isClient) {
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-avatar';
+    avatar.textContent = 'T';
+    row.appendChild(avatar);
+  }
+
   const bubble = document.createElement('div');
-  bubble.className = 'chat-bubble ' + (role === 'client' ? 'client' : 'bot');
-  bubble.textContent = content;
-  container.appendChild(bubble);
+  bubble.className = 'chat-bubble ' + (isClient ? 'client' : 'bot');
+
+  const textEl = document.createElement('div');
+  textEl.className = 'chat-bubble-text';
+  textEl.textContent = content;
+  bubble.appendChild(textEl);
+
+  const timeEl = document.createElement('div');
+  timeEl.className = 'chat-bubble-time';
+  timeEl.textContent = formatChatTime(timestamp);
+  bubble.appendChild(timeEl);
+
+  row.appendChild(bubble);
+  container.appendChild(row);
   container.scrollTop = container.scrollHeight;
 }
 
 function showTypingIndicator() {
   const container = document.getElementById('chatMessages');
+  const row = document.createElement('div');
+  row.className = 'chat-row bot';
+  row.id = 'typingIndicator';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'chat-avatar';
+  avatar.textContent = 'T';
+  row.appendChild(avatar);
+
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble bot typing';
-  bubble.id = 'typingIndicator';
   bubble.innerHTML = '<div class="chat-typing-dot"></div><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div>';
-  container.appendChild(bubble);
+  row.appendChild(bubble);
+
+  container.appendChild(row);
   container.scrollTop = container.scrollHeight;
 }
 
@@ -890,7 +952,7 @@ async function loadProfileChat() {
     if (messages.length === 0) {
       renderChatMessage('bot', 'Привет! Расскажи о своей компании — чем вы занимаетесь, какой у вас опыт, какие тендеры вам интересны. Это поможет AI точнее находить подходящие тендеры.');
     } else {
-      messages.forEach(m => renderChatMessage(m.role, m.content));
+      messages.forEach(m => renderChatMessage(m.role, m.content, m.created_at));
     }
   } catch (e) {
     showToast('Ошибка загрузки чата');
