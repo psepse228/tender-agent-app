@@ -544,9 +544,10 @@ a { text-decoration: none; color: inherit; }
 <div class="toast" id="toast"></div>
 
 <script>
-const GET_URL     = '/api/tenders';
-const REFRESH_URL = '/api/refresh';
-const PROFILE_URL = '/api/profile';
+const GET_URL          = '/api/tenders';
+const REFRESH_URL      = '/api/refresh';
+const PROFILE_URL      = '/api/profile';
+const PROFILE_CHAT_URL = '/api/profile-chat';
 
 const DEFAULT_EMPTY_TEXT = 'Тендеров не найдено.<br>Нажми ↻ чтобы запустить поиск.';
 const NUDGE_EMPTY_TEXT   = 'Сначала настрой профиль компании — это поможет AI точнее находить тендеры.<br>Затем нажми ↻ чтобы запустить поиск.';
@@ -876,7 +877,14 @@ async function loadProfileChat() {
   const container = document.getElementById('chatMessages');
   container.innerHTML = '';
   try {
-    const res  = await fetch('/api/profile-chat', { headers: authHeaders() });
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30000);
+    const res   = await fetch(PROFILE_CHAT_URL, { headers: authHeaders(), signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) {
+      showToast('Ошибка загрузки чата');
+      return;
+    }
     const data = await res.json();
     const messages = data.messages || [];
     if (messages.length === 0) {
@@ -904,18 +912,22 @@ async function sendChatMessage() {
   showTypingIndicator();
 
   try {
-    const res = await fetch('/api/profile-chat', {
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30000);
+    const res = await fetch(PROFILE_CHAT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ message }),
+      signal: ctrl.signal,
     });
+    clearTimeout(timer);
     hideTypingIndicator();
     if (!res.ok) {
       showToast('Ошибка при отправке сообщения');
       return;
     }
     const data = await res.json();
-    renderChatMessage('bot', data.reply);
+    renderChatMessage('bot', data.reply || 'Извините, что-то пошло не так.');
   } catch (e) {
     hideTypingIndicator();
     showToast('Ошибка при отправке сообщения');
