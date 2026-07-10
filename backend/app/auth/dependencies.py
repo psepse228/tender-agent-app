@@ -28,11 +28,16 @@ def get_current_tenant_id(authorization: str = Header(...)) -> str:
     try:
         pairs = validate_init_data(init_data, settings.telegram_bot_token)
     except InitDataError as e:
+        tok = settings.telegram_bot_token
         logger.warning(
-            "auth rejected: %s (init_data length=%d, bot_token_len=%d)",
+            "auth rejected: %s (init_data length=%d, bot_token_len=%d, "
+            "stripped_len=%d, has_colon=%s, colon_index=%d)",
             str(e),
             len(init_data),
-            len(settings.telegram_bot_token),
+            len(tok),
+            len(tok.strip()),
+            ":" in tok,
+            tok.find(":"),
         )
         raise HTTPException(status_code=401, detail=str(e))
 
