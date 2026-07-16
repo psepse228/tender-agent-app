@@ -133,7 +133,7 @@ def test_get_returns_only_caller_tenants_messages(monkeypatch):
 def test_get_requires_auth():
     response = client.get("/api/profile-chat")
 
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 
 def test_post_persists_client_message_and_bot_reply(monkeypatch):
@@ -203,4 +203,4 @@ def test_post_rejects_empty_message(monkeypatch):
 def test_post_requires_auth():
     response = client.post("/api/profile-chat", json={"message": "Hi"})
 
-    assert response.status_code == 422
+    assert response.status_code == 401

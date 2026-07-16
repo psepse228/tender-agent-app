@@ -148,7 +148,7 @@ def test_skips_empty_values(monkeypatch):
 def test_post_requires_auth():
     response = client.post("/api/profile", json={"updates": {"Company Name": "Acme"}})
 
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 
 def test_get_returns_profile_text_for_caller_tenant(monkeypatch):
@@ -190,4 +190,4 @@ def test_get_returns_null_when_no_profile_exists(monkeypatch):
 def test_get_requires_auth():
     response = client.get("/api/profile")
 
-    assert response.status_code == 422
+    assert response.status_code == 401

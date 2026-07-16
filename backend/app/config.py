@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     telegram_bot_token: str
     environment: str = "development"
 
+    # Google OAuth self-serve web login -- all optional so existing
+    # Telegram-only deployments keep working without configuring these.
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: str | None = None
+    google_oauth_redirect_uri: str | None = None
+    session_secret: str | None = None
+    dev_bypass_email: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

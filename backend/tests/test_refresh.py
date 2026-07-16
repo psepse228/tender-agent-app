@@ -107,7 +107,7 @@ def test_allows_refresh_when_never_refreshed_before(monkeypatch):
 def test_requires_auth():
     response = client.post("/api/refresh")
 
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 
 def test_status_reports_no_progress_for_a_tenant_that_never_refreshed(monkeypatch):

@@ -584,8 +584,12 @@ let currentFilter = 'all';
 if (window.Telegram?.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
 
 function authHeaders() {
-  const initData = window.Telegram?.WebApp?.initData || '';
-  return { 'Authorization': 'tma ' + initData };
+  // Inside Telegram, prove identity via initData. Outside Telegram (a plain
+  // browser after Google login) send no Authorization header at all -- the
+  // tender_agent_session cookie set by /api/auth/google/callback is sent
+  // automatically with same-origin fetches, and the backend falls back to it.
+  const initData = window.Telegram?.WebApp?.initData;
+  return initData ? { 'Authorization': 'tma ' + initData } : {};
 }
 
 function normalizeTender(t) {
@@ -787,6 +791,10 @@ function setTime() {
 async function loadTenders() {
   try {
     const res  = await fetch(GET_URL, { headers: authHeaders() });
+    if (res.status === 401 && !window.Telegram?.WebApp?.initData) {
+      window.location.href = '/login';
+      return;
+    }
     const data = await res.json();
     const raw  = data.tenders || data;
     allTenders = Array.isArray(raw)

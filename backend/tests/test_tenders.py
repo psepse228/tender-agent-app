@@ -70,4 +70,4 @@ def test_returns_only_the_callers_tenant_tenders(monkeypatch):
 def test_requires_auth():
     response = client.get("/api/tenders")
 
-    assert response.status_code == 422
+    assert response.status_code == 401
