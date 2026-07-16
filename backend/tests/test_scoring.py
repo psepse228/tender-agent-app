@@ -80,6 +80,63 @@ def test_uses_tenders_own_url_when_present():
     assert result[0]["source"] == "https://etender.uzex.uz/lot/123"
 
 
+def test_recomputes_match_percent_from_sub_scores_instead_of_trusting_model():
+    fake_client = _FakeOpenAI(
+        {
+            "tenders": [
+                {
+                    "title": "Road repair",
+                    "matchPercent": 999,  # model's own arithmetic should be ignored
+                    "compliance": 90,
+                    "financial": 70,
+                    "feasibility": 80,
+                    "winChance": 75,
+                }
+            ]
+        }
+    )
+
+    result = extract_and_score("some markdown", SOURCE, "We build roads.", client=fake_client)
+
+    # 90*0.4 + 70*0.2 + 80*0.25 + 75*0.15 = 81.25 -> rounds to 81
+    assert result[0]["matchPercent"] == 81
+    assert result[0]["recommendation"] == "Подать заявку"
+
+
+def test_recomputed_score_clamps_out_of_range_sub_scores():
+    fake_client = _FakeOpenAI(
+        {
+            "tenders": [
+                {
+                    "title": "Bad sub-scores",
+                    "compliance": 150,
+                    "financial": -20,
+                    "feasibility": "not a number",
+                    "winChance": 50,
+                }
+            ]
+        }
+    )
+
+    result = extract_and_score("md", SOURCE, "profile", client=fake_client)
+
+    # compliance clamped to 100, financial clamped to 0, feasibility -> 0, winChance 50
+    # 100*0.4 + 0*0.2 + 0*0.25 + 50*0.15 = 47.5 -> rounds to 48 (banker's rounding: round(47.5)==48)
+    assert result[0]["matchPercent"] == 48
+    assert result[0]["recommendation"] == "Рассмотреть"
+
+
+def test_recomputed_score_below_40_is_skip_recommendation():
+    fake_client = _FakeOpenAI(
+        {"tenders": [{"title": "Low match", "compliance": 10, "financial": 10, "feasibility": 10, "winChance": 10}]}
+    )
+
+    result = extract_and_score("md", SOURCE, "profile", client=fake_client)
+
+    assert result[0]["matchPercent"] == 10
+    assert result[0]["recommendation"] == "Пропустить"
+
+
 def test_propagates_error_on_malformed_json_response():
     class _BadJSONClient:
         def __init__(self):

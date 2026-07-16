@@ -71,4 +71,34 @@ def extract_and_score(content: str, source: dict, profile_text: str, client=None
     for tender in tenders:
         tender["source"] = tender.get("url") or source["url"]
         tender["platform"] = source["name"]
+        _recompute_match_score(tender)
     return tenders
+
+
+def _to_score(value) -> float:
+    try:
+        return max(0.0, min(100.0, float(value)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _recompute_match_score(tender: dict) -> None:
+    """Recompute matchPercent/recommendation from the sub-scores in code rather
+    than trusting the model's own arithmetic, which is unverified and can drift
+    across a single completion covering multiple tenders."""
+    compliance = _to_score(tender.get("compliance"))
+    financial = _to_score(tender.get("financial"))
+    feasibility = _to_score(tender.get("feasibility"))
+    win_chance = _to_score(tender.get("winChance"))
+
+    match_percent = round(
+        compliance * 0.4 + financial * 0.2 + feasibility * 0.25 + win_chance * 0.15
+    )
+    tender["matchPercent"] = match_percent
+
+    if match_percent >= 70:
+        tender["recommendation"] = "Подать заявку"
+    elif match_percent >= 40:
+        tender["recommendation"] = "Рассмотреть"
+    else:
+        tender["recommendation"] = "Пропустить"

@@ -108,3 +108,37 @@ def test_requires_auth():
     response = client.post("/api/refresh")
 
     assert response.status_code == 422
+
+
+def test_status_reports_no_progress_for_a_tenant_that_never_refreshed(monkeypatch):
+    fake_client = _FakeClient({"tenant_users": [{"telegram_user_id": 222, "tenant_id": TENANT_ID}]})
+    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
+    monkeypatch.setattr("app.scraping.pipeline._progress", {}, raising=False)
+
+    response = client.get("/api/refresh/status", headers=_auth_header(222))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["done"] == 0
+    assert body["running"] is False
+
+
+def test_status_reflects_in_flight_progress(monkeypatch):
+    fake_client = _FakeClient({"tenant_users": [{"telegram_user_id": 333, "tenant_id": TENANT_ID}]})
+    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
+    monkeypatch.setattr(
+        "app.scraping.pipeline._progress",
+        {TENANT_ID: {"total": 6, "done": 3, "sources": [{"name": "eTender UzEx", "status": "ok"}], "running": True}},
+        raising=False,
+    )
+
+    response = client.get("/api/refresh/status", headers=_auth_header(333))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {
+        "total": 6,
+        "done": 3,
+        "sources": [{"name": "eTender UzEx", "status": "ok"}],
+        "running": True,
+    }

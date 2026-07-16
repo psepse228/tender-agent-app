@@ -4,11 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth.dependencies import get_current_tenant_id
 from app.db import get_supabase_client
-from app.scraping.pipeline import refresh_tenant
+from app.scraping.pipeline import get_refresh_progress, refresh_tenant
 
 router = APIRouter()
 
 COOLDOWN_SECONDS = 5 * 60
+
+
+@router.get("/api/refresh/status")
+def refresh_status(tenant_id: str = Depends(get_current_tenant_id)) -> dict:
+    return get_refresh_progress(tenant_id)
 
 
 @router.post("/api/refresh")

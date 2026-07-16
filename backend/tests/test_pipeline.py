@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
-from app.scraping.pipeline import _process_source, refresh_tenant
+from app.scraping import pipeline
+from app.scraping.pipeline import _process_source, get_refresh_progress, refresh_tenant
 
 TENANT_ID = "005ece7a-2af4-4f22-84f7-25d5e743af9e"
 
@@ -252,3 +253,25 @@ def test_drops_tenders_with_no_title_before_insert(monkeypatch):
 
     assert [t["title"] for t in result["tenders"]] == ["Valid tender"]
     assert [r["title"] for r in store["tenders"]] == ["Valid tender"]
+
+
+def test_reports_no_progress_before_any_refresh_has_run():
+    progress = get_refresh_progress("never-refreshed-tenant")
+
+    assert progress == {"total": 6, "done": 0, "sources": [], "running": False}
+
+
+def test_progress_reaches_all_sources_done_and_not_running_after_refresh(monkeypatch):
+    store = {"company_profile": [], "tenants": [{"id": TENANT_ID}], "tenders": []}
+    monkeypatch.setattr(
+        "app.scraping.pipeline._process_source",
+        lambda source, _profile_text: {"name": source["name"], "status": "ok", "tenders": []},
+    )
+
+    refresh_tenant(TENANT_ID, _FakeClient(store))
+
+    progress = get_refresh_progress(TENANT_ID)
+    assert progress["done"] == 6
+    assert progress["total"] == 6
+    assert progress["running"] is False
+    assert {s["name"] for s in progress["sources"]} == {s["name"] for s in pipeline.SOURCES}

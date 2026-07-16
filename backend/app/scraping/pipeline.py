@@ -1,5 +1,5 @@
 import logging
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from app.scraping.firecrawl import scrape_source
@@ -18,6 +18,17 @@ SOURCES = [
     },
     {"name": "BicoTender", "url": "https://bicotender.ru"},
 ]
+
+# In-memory per-tenant progress for the currently-running (or most recently
+# finished) refresh, so the frontend can poll GET /api/refresh/status while
+# POST /api/refresh is still in flight instead of staring at a static toast.
+# Ephemeral by design -- a restart or multi-instance deploy just resets it,
+# which only affects the progress readout, never the actual refresh result.
+_progress: dict[str, dict] = {}
+
+
+def get_refresh_progress(tenant_id: str) -> dict:
+    return _progress.get(tenant_id, {"total": len(SOURCES), "done": 0, "sources": [], "running": False})
 
 
 def _load_profile_text(tenant_id: str, client) -> str:
@@ -86,10 +97,22 @@ def refresh_tenant(tenant_id: str, client) -> dict:
     """
     profile_text = _load_profile_text(tenant_id, client)
 
-    with ThreadPoolExecutor(max_workers=len(SOURCES)) as pool:
-        results = list(
-            pool.map(lambda source: _process_source(source, profile_text), SOURCES)
-        )
+    _progress[tenant_id] = {"total": len(SOURCES), "done": 0, "sources": [], "running": True}
+
+    results = []
+    try:
+        with ThreadPoolExecutor(max_workers=len(SOURCES)) as pool:
+            futures = {
+                pool.submit(_process_source, source, profile_text): source for source in SOURCES
+            }
+            for future in as_completed(futures):
+                result = future.result()
+                results.append(result)
+                progress = _progress[tenant_id]
+                progress["done"] += 1
+                progress["sources"].append({"name": result["name"], "status": result["status"]})
+    finally:
+        _progress[tenant_id]["running"] = False
 
     tenders = [t for r in results for t in r["tenders"] if t.get("title")]
     sources_status = [
