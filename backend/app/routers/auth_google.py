@@ -1,3 +1,4 @@
+import logging
 import secrets
 import time
 from urllib.parse import urlencode
@@ -10,6 +11,8 @@ from app.auth.dependencies import SESSION_COOKIE_NAME, resolve_or_create_tenant_
 from app.auth.session import create_session_token
 from app.config import get_settings
 from app.db import get_supabase_client
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -198,6 +201,7 @@ def google_oauth_callback(
     try:
         tenant_id = resolve_or_create_tenant_by_email(email, userinfo.get("name"), get_supabase_client())
     except Exception:
+        logger.exception("Failed to resolve or create tenant for email %s", email)
         return _error_redirect("tenant")
 
     response = _issue_session_redirect(email, tenant_id)
