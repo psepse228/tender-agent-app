@@ -19,4 +19,11 @@ INDEX_HTML_PATH = Path(__file__).resolve().parent.parent / "index.html"
 
 @app.get("/", include_in_schema=False)
 def serve_index() -> FileResponse:
-    return FileResponse(INDEX_HTML_PATH)
+    # No cache-control means browsers (and Telegram's in-app WebView
+    # especially) apply their own heuristic freshness and can silently serve
+    # a stale copy of the Mini App shell for a long time after a deploy.
+    # This is a shell that changes on every ship -- never let it be cached.
+    return FileResponse(
+        INDEX_HTML_PATH,
+        headers={"Cache-Control": "no-store, must-revalidate"},
+    )
