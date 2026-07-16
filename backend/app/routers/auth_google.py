@@ -8,7 +8,7 @@ from fastapi import APIRouter, Cookie
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from app.auth.dependencies import SESSION_COOKIE_NAME, resolve_or_create_tenant_by_email
-from app.auth.session import create_session_token
+from app.auth.session import create_session_token, verify_session_token
 from app.config import get_settings
 from app.db import get_supabase_client
 
@@ -214,3 +214,21 @@ def logout():
     response = JSONResponse({"ok": True})
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
     return response
+
+
+@router.get("/api/auth/me", include_in_schema=False)
+def get_current_session_user(session_token: str | None = Cookie(None, alias=SESSION_COOKIE_NAME)) -> dict:
+    """Only ever returns an email for the Google-OAuth web-login path -- a
+    Telegram Mini App session has no session cookie at all, so this
+    correctly reports {"email": null} there and the frontend hides the
+    account menu (Telegram already shows the user's own identity via its
+    own chrome)."""
+    if session_token is None:
+        return {"email": None}
+
+    settings = get_settings()
+    if not settings.session_secret:
+        return {"email": None}
+
+    payload = verify_session_token(session_token, settings.session_secret)
+    return {"email": payload["email"] if payload else None}

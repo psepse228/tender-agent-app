@@ -196,3 +196,44 @@ def test_logout_clears_session_cookie():
     assert response.status_code == 200
     set_cookie = response.headers.get("set-cookie", "")
     assert SESSION_COOKIE_NAME in set_cookie
+
+
+def test_me_returns_email_for_a_valid_session_cookie(monkeypatch):
+    monkeypatch.setattr("app.routers.auth_google.get_settings", lambda: _settings(session_secret="secret"))
+    import time as time_module
+
+    from app.auth.session import create_session_token
+
+    token = create_session_token(
+        {"email": "owner@example.com", "tenantId": TENANT_ID, "exp": time_module.time() + 3600}, "secret"
+    )
+
+    response = client.get("/api/auth/me", cookies={SESSION_COOKIE_NAME: token})
+
+    assert response.status_code == 200
+    assert response.json() == {"email": "owner@example.com"}
+
+
+def test_me_returns_null_email_with_no_session_cookie():
+    response = client.get("/api/auth/me")
+
+    assert response.status_code == 200
+    assert response.json() == {"email": None}
+
+
+def test_me_returns_null_email_when_web_login_not_configured(monkeypatch):
+    monkeypatch.setattr("app.routers.auth_google.get_settings", lambda: _settings(session_secret=None))
+
+    response = client.get("/api/auth/me", cookies={SESSION_COOKIE_NAME: "whatever"})
+
+    assert response.status_code == 200
+    assert response.json() == {"email": None}
+
+
+def test_me_returns_null_email_for_invalid_session_cookie(monkeypatch):
+    monkeypatch.setattr("app.routers.auth_google.get_settings", lambda: _settings(session_secret="secret"))
+
+    response = client.get("/api/auth/me", cookies={SESSION_COOKIE_NAME: "garbage"})
+
+    assert response.status_code == 200
+    assert response.json() == {"email": None}

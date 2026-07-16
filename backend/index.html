@@ -127,6 +127,44 @@ a { text-decoration: none; color: inherit; }
 .refresh-btn.spinning { animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ─── ACCOUNT MENU ─── */
+.account-menu { position: relative; display: none; }
+.account-menu.show { display: block; }
+.account-menu-trigger {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.03); border: 1px solid var(--border);
+  border-radius: 100px; padding: 4px 10px 4px 4px; cursor: pointer;
+  transition: background .18s, border-color .18s;
+}
+.account-menu-trigger:active { background: rgba(255,255,255,.06); }
+.account-menu-avatar {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  background: var(--grad); color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--fd); font-size: 11px; font-weight: 800;
+}
+.account-menu-chevron { color: rgba(148,163,184,.5); font-size: 9px; }
+.account-menu-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 60;
+  min-width: 200px; background: var(--bg2);
+  border: 1px solid var(--border-c); border-radius: 14px;
+  padding: 12px; display: none;
+  box-shadow: 0 12px 32px rgba(0,0,0,.4);
+}
+.account-menu-dropdown.open { display: block; }
+.account-menu-dropdown-email {
+  font-size: 11px; color: rgba(148,163,184,.6); word-break: break-all;
+  padding: 0 4px 10px; border-bottom: 1px solid var(--border); margin-bottom: 10px;
+}
+.account-menu-dropdown-error { font-size: 11px; color: var(--red); padding: 0 4px 8px; }
+.account-menu-dropdown-logout {
+  width: 100%; padding: 10px; border-radius: 9px;
+  background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.22);
+  color: var(--red); font-family: var(--fd); font-size: 12px; font-weight: 700;
+  cursor: pointer;
+}
+.account-menu-dropdown-logout:disabled { opacity: .5; cursor: default; }
+
 /* ─── BOTTOM NAV ─── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
@@ -514,6 +552,17 @@ a { text-decoration: none; color: inherit; }
   <div class="header-right">
     <div class="last-update" id="lastUpdate"></div>
     <button class="refresh-btn" id="refreshBtn" onclick="refreshTenders()">↻</button>
+    <div class="account-menu" id="accountMenu">
+      <button class="account-menu-trigger" onclick="toggleAccountMenu()">
+        <span class="account-menu-avatar" id="accountAvatar">?</span>
+        <span class="account-menu-chevron">▾</span>
+      </button>
+      <div class="account-menu-dropdown" id="accountDropdown">
+        <div class="account-menu-dropdown-email" id="accountEmail"></div>
+        <div class="account-menu-dropdown-error" id="accountLogoutError" style="display:none"></div>
+        <button class="account-menu-dropdown-logout" id="accountLogoutBtn" onclick="logoutAccount()">Выйти</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1155,6 +1204,51 @@ async function sendChatMessage() {
   }
 }
 
+// ── ACCOUNT MENU ──
+// Only ever populated for the Google-OAuth web-login path -- a Telegram
+// session has no session cookie, so /api/auth/me returns {email: null} and
+// the menu stays hidden (Telegram already shows the user's own identity).
+async function loadAccountMenu() {
+  try {
+    const res = await fetch('/api/auth/me', { headers: authHeaders() });
+    const data = await res.json();
+    if (!data.email) return;
+    document.getElementById('accountAvatar').textContent = data.email[0].toUpperCase();
+    document.getElementById('accountEmail').textContent = data.email;
+    document.getElementById('accountMenu').classList.add('show');
+  } catch (e) { /* no account menu if this fails -- non-critical */ }
+}
+
+function toggleAccountMenu() {
+  document.getElementById('accountDropdown').classList.toggle('open');
+}
+
+document.addEventListener('click', (event) => {
+  const menu = document.getElementById('accountMenu');
+  if (menu && !menu.contains(event.target)) {
+    document.getElementById('accountDropdown').classList.remove('open');
+  }
+});
+
+async function logoutAccount() {
+  const btn = document.getElementById('accountLogoutBtn');
+  const errEl = document.getElementById('accountLogoutError');
+  btn.disabled = true;
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch('/api/auth/logout', { method: 'POST', headers: authHeaders() });
+    if (!res.ok) throw new Error('Не удалось выйти (' + res.status + ')');
+    // Full navigation, not a SPA route change -- the session cookie changed
+    // server-side and any already-fetched state should be dropped.
+    window.location.href = '/login';
+  } catch (e) {
+    btn.disabled = false;
+    errEl.textContent = e.message || 'Не удалось выйти';
+    errEl.style.display = 'block';
+  }
+}
+
+loadAccountMenu();
 loadTenders();
 </script>
 </body>
