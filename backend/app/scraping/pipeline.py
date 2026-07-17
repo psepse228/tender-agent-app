@@ -2,6 +2,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
+from app.notifications.alerts import notify_high_scoring_tenders
 from app.scraping.firecrawl import scrape_source
 from app.scraping.scoring import extract_and_score
 
@@ -43,6 +44,15 @@ def _load_profile_text(tenant_id: str, client) -> str:
     if rows and rows[0].get("profile_text"):
         return rows[0]["profile_text"]
     return "No profile configured yet."
+
+
+def _load_tenant_sources(tenant_id: str, client) -> list[dict]:
+    """Tenant-added sources on top of the shared SOURCES list -- see
+    app/routers/sources.py, where a tenant manages these themselves."""
+    response = (
+        client.table("tenant_sources").select("name,url").eq("tenant_id", tenant_id).execute()
+    )
+    return [{"name": row["name"], "url": row["url"]} for row in (response.data or [])]
 
 
 def _process_source(source: dict, profile_text: str) -> dict:
@@ -96,14 +106,15 @@ def refresh_tenant(tenant_id: str, client) -> dict:
     updates `last_refresh_at`. Returns {"tenders": [...], "sources_status": [...]}.
     """
     profile_text = _load_profile_text(tenant_id, client)
+    sources = SOURCES + _load_tenant_sources(tenant_id, client)
 
-    _progress[tenant_id] = {"total": len(SOURCES), "done": 0, "sources": [], "running": True}
+    _progress[tenant_id] = {"total": len(sources), "done": 0, "sources": [], "running": True}
 
     results = []
     try:
-        with ThreadPoolExecutor(max_workers=len(SOURCES)) as pool:
+        with ThreadPoolExecutor(max_workers=len(sources)) as pool:
             futures = {
-                pool.submit(_process_source, source, profile_text): source for source in SOURCES
+                pool.submit(_process_source, source, profile_text): source for source in sources
             }
             for future in as_completed(futures):
                 result = future.result()
@@ -126,5 +137,12 @@ def refresh_tenant(tenant_id: str, client) -> dict:
     client.table("tenants").update(
         {"last_refresh_at": datetime.now(timezone.utc).isoformat()}
     ).eq("id", tenant_id).execute()
+
+    try:
+        notify_high_scoring_tenders(tenant_id, tenders, client)
+    except Exception:
+        # A notification failure should never fail a refresh that otherwise
+        # succeeded -- the tenders themselves are already saved above.
+        logger.exception("Failed to send high-score notifications for tenant %s", tenant_id)
 
     return {"tenders": tenders, "sources_status": sources_status}

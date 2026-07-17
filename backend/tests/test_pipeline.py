@@ -255,6 +255,83 @@ def test_drops_tenders_with_no_title_before_insert(monkeypatch):
     assert [r["title"] for r in store["tenders"]] == ["Valid tender"]
 
 
+def test_scrapes_tenant_specific_custom_sources_alongside_the_shared_list(monkeypatch):
+    store = {
+        "company_profile": [],
+        "tenants": [{"id": TENANT_ID}],
+        "tenders": [],
+        "tenant_sources": [{"tenant_id": TENANT_ID, "name": "My Own Source", "url": "https://example.com"}],
+        "tenant_users": [],
+        "notified_tenders": [],
+    }
+    seen_names = []
+
+    def fake_process(source, _profile_text):
+        seen_names.append(source["name"])
+        return {"name": source["name"], "status": "ok", "tenders": []}
+
+    monkeypatch.setattr("app.scraping.pipeline._process_source", fake_process)
+
+    refresh_tenant(TENANT_ID, _FakeClient(store))
+
+    assert "My Own Source" in seen_names
+    assert "eTender UzEx" in seen_names  # shared source is still included
+
+
+def test_calls_high_score_notification_hook_after_saving_tenders(monkeypatch):
+    store = {
+        "company_profile": [],
+        "tenants": [{"id": TENANT_ID}],
+        "tenders": [],
+        "tenant_sources": [],
+        "tenant_users": [],
+        "notified_tenders": [],
+    }
+
+    def fake_process(source, _profile_text):
+        if source["name"] == "eTender UzEx":
+            return {"name": source["name"], "status": "ok", "tenders": [{"title": "T", "matchPercent": 80}]}
+        return {"name": source["name"], "status": "ok", "tenders": []}
+
+    monkeypatch.setattr("app.scraping.pipeline._process_source", fake_process)
+
+    calls = []
+    monkeypatch.setattr(
+        "app.scraping.pipeline.notify_high_scoring_tenders",
+        lambda tenant_id, tenders, client: calls.append((tenant_id, tenders)),
+    )
+
+    refresh_tenant(TENANT_ID, _FakeClient(store))
+
+    assert len(calls) == 1
+    assert calls[0][0] == TENANT_ID
+    assert calls[0][1][0]["title"] == "T"
+
+
+def test_notification_failure_does_not_break_the_refresh(monkeypatch):
+    store = {
+        "company_profile": [],
+        "tenants": [{"id": TENANT_ID}],
+        "tenders": [],
+        "tenant_sources": [],
+        "tenant_users": [],
+        "notified_tenders": [],
+    }
+    monkeypatch.setattr(
+        "app.scraping.pipeline._process_source",
+        lambda source, _profile_text: {"name": source["name"], "status": "ok", "tenders": []},
+    )
+
+    def _raise(*_a, **_k):
+        raise RuntimeError("telegram is down")
+
+    monkeypatch.setattr("app.scraping.pipeline.notify_high_scoring_tenders", _raise)
+
+    result = refresh_tenant(TENANT_ID, _FakeClient(store))
+
+    assert result["tenders"] == []
+
+
 def test_reports_no_progress_before_any_refresh_has_run():
     progress = get_refresh_progress("never-refreshed-tenant")
 
