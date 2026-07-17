@@ -91,7 +91,10 @@ LOGIN_PAGE_HTML = """<!DOCTYPE html>
         const btn = document.getElementById('googleBtn');
         btn.addEventListener('click', (e) => {
           e.preventDefault();
-          Telegram.WebApp.openLink('/api/auth/google/start?via=telegram_deeplink');
+          // openLink is a native bridge call, not page navigation -- it has
+          // no document to resolve a relative path against, so this must be
+          // a fully-qualified URL or the native client silently no-ops.
+          Telegram.WebApp.openLink(location.origin + '/api/auth/google/start?via=telegram_deeplink');
         });
       }
     }
