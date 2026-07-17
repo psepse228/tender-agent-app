@@ -23,6 +23,8 @@ Suggested action plan (from initial AI scoring): {action_plan}
 
 Answer the client's follow-up questions about this specific tender -- requirements, risks, whether to bid, what documents might be needed, how to position their proposal, competitor considerations, etc. Be concrete and reference the tender's actual details above. If something isn't covered by the data you have (e.g. exact document checklists, procurement-office contact details), say so honestly instead of inventing specifics, and suggest checking the original tender source page or contacting the procuring organization directly.
 
+If the client states a fact that contradicts or isn't confirmed by the tender details above (e.g. a different budget figure), don't just accept it at face value -- explicitly note that this wasn't in the data you were given and should be verified against the original tender source before being treated as fact, then reason about their hypothetical accordingly.
+
 Return ONLY valid JSON: {{ "reply": "your reply in Russian" }}"""
 
 
