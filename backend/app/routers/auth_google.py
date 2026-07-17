@@ -24,7 +24,7 @@ SESSION_MAX_AGE_SECONDS = 30 * 24 * 3600
 
 # Public info (a bot's @username is how anyone starts it, not a secret) --
 # one-line change if the bot is ever renamed.
-TELEGRAM_BOT_USERNAME = "Solura_tenderagentbot"
+TELEGRAM_BOT_USERNAME = "Solura_tenderagenbot"
 
 EXCHANGE_TOKEN_MAX_AGE_SECONDS = 2 * 60
 
