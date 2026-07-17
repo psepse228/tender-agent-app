@@ -195,3 +195,97 @@ def test_delete_favorites_requires_auth():
     response = client.delete("/api/favorites/fav-1")
 
     assert response.status_code == 401
+
+
+FAVORITE_ID = "fav-1"
+
+
+def _store_with_favorite(**favorite_overrides):
+    favorite = {
+        "id": FAVORITE_ID,
+        "tenant_id": TENANT_ID,
+        "title": "Road repair",
+        "organization": "City Council",
+        "match_percent": 82,
+    }
+    favorite.update(favorite_overrides)
+    return {
+        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
+        "favorite_tenders": [favorite],
+        "favorite_chat_messages": [],
+        "company_profile": [],
+    }
+
+
+def test_gets_empty_chat_history_for_a_new_favorite(monkeypatch):
+    store = _store_with_favorite()
+    _patch(monkeypatch, _FakeClient(store))
+
+    response = client.get(f"/api/favorites/{FAVORITE_ID}/chat", headers=_auth_header(111))
+
+    assert response.status_code == 200
+    assert response.json() == {"messages": []}
+
+
+def test_chat_history_404s_for_a_favorite_from_another_tenant(monkeypatch):
+    store = _store_with_favorite(tenant_id="other-tenant")
+    _patch(monkeypatch, _FakeClient(store))
+
+    response = client.get(f"/api/favorites/{FAVORITE_ID}/chat", headers=_auth_header(111))
+
+    assert response.status_code == 404
+
+
+def test_get_favorite_chat_requires_auth():
+    response = client.get(f"/api/favorites/{FAVORITE_ID}/chat")
+
+    assert response.status_code == 401
+
+
+def test_sends_a_favorite_chat_message_and_saves_both_sides(monkeypatch):
+    store = _store_with_favorite()
+    _patch(monkeypatch, _FakeClient(store))
+    monkeypatch.setattr(
+        "app.routers.favorites.generate_reply",
+        lambda conversation, tender, profile_text: "Вам понадобится банковская гарантия.",
+    )
+
+    response = client.post(
+        f"/api/favorites/{FAVORITE_ID}/chat",
+        headers=_auth_header(111),
+        json={"message": "Какие документы нужны?"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"reply": "Вам понадобится банковская гарантия."}
+    roles = [m["role"] for m in store["favorite_chat_messages"]]
+    assert roles == ["client", "bot"]
+
+
+def test_favorite_chat_post_404s_for_a_favorite_from_another_tenant(monkeypatch):
+    store = _store_with_favorite(tenant_id="other-tenant")
+    _patch(monkeypatch, _FakeClient(store))
+
+    response = client.post(
+        f"/api/favorites/{FAVORITE_ID}/chat", headers=_auth_header(111), json={"message": "Hi"}
+    )
+
+    assert response.status_code == 404
+    assert store["favorite_chat_messages"] == []
+
+
+def test_favorite_chat_rejects_empty_message(monkeypatch):
+    store = _store_with_favorite()
+    _patch(monkeypatch, _FakeClient(store))
+
+    response = client.post(
+        f"/api/favorites/{FAVORITE_ID}/chat", headers=_auth_header(111), json={"message": "   "}
+    )
+
+    assert response.status_code == 400
+
+
+def test_post_favorite_chat_requires_auth():
+    response = client.post(f"/api/favorites/{FAVORITE_ID}/chat", json={"message": "Hi"})
+
+    assert response.status_code == 401

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_tenant_id
+from app.chat.favorite_chat import generate_reply
 from app.db import get_supabase_client
 
 router = APIRouter()
@@ -87,3 +88,78 @@ def remove_favorite(favorite_id: str, tenant_id: str = Depends(get_current_tenan
     client = get_supabase_client()
     client.table("favorite_tenders").delete().eq("id", favorite_id).eq("tenant_id", tenant_id).execute()
     return {"ok": True}
+
+
+def _get_owned_favorite(favorite_id: str, tenant_id: str, client) -> dict:
+    response = (
+        client.table("favorite_tenders")
+        .select("*")
+        .eq("id", favorite_id)
+        .eq("tenant_id", tenant_id)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data
+    if not rows:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return rows[0]
+
+
+@router.get("/api/favorites/{favorite_id}/chat")
+def get_favorite_chat_history(favorite_id: str, tenant_id: str = Depends(get_current_tenant_id)) -> dict:
+    client = get_supabase_client()
+    _get_owned_favorite(favorite_id, tenant_id, client)
+
+    response = (
+        client.table("favorite_chat_messages")
+        .select("role,content,created_at")
+        .eq("favorite_id", favorite_id)
+        .order("created_at")
+        .execute()
+    )
+    return {"messages": response.data or []}
+
+
+class FavoriteChatMessagePayload(BaseModel):
+    message: str
+
+
+@router.post("/api/favorites/{favorite_id}/chat")
+def send_favorite_chat_message(
+    favorite_id: str,
+    payload: FavoriteChatMessagePayload,
+    tenant_id: str = Depends(get_current_tenant_id),
+) -> dict:
+    message = payload.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    client = get_supabase_client()
+    tender = _get_owned_favorite(favorite_id, tenant_id, client)
+
+    client.table("favorite_chat_messages").insert(
+        {"favorite_id": favorite_id, "tenant_id": tenant_id, "role": "client", "content": message}
+    ).execute()
+
+    history_response = (
+        client.table("favorite_chat_messages")
+        .select("role,content")
+        .eq("favorite_id", favorite_id)
+        .order("created_at")
+        .execute()
+    )
+    conversation = history_response.data or []
+
+    profile_response = (
+        client.table("company_profile").select("profile_text").eq("tenant_id", tenant_id).limit(1).execute()
+    )
+    profile_rows = profile_response.data
+    profile_text = profile_rows[0]["profile_text"] if profile_rows else ""
+
+    reply = generate_reply(conversation, tender, profile_text)
+
+    client.table("favorite_chat_messages").insert(
+        {"favorite_id": favorite_id, "tenant_id": tenant_id, "role": "bot", "content": reply}
+    ).execute()
+
+    return {"reply": reply}

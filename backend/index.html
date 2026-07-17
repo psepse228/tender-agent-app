@@ -342,6 +342,11 @@ a { text-decoration: none; color: inherit; }
   color: var(--red); cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 
+.fav-chat-back {
+  background: none; border: none; color: var(--cyan); font-family: var(--fb);
+  font-size: 12px; cursor: pointer; padding: 0 0 10px; display: block;
+}
+
 /* Tags (inline badges) */
 .tag { font-size: 9px; padding: 2px 8px; border-radius: 6px; font-weight: 600; border: 1px solid; flex-shrink: 0; }
 .tag-submit  { color: var(--green);  border-color: rgba(34,197,94,.28);  background: rgba(34,197,94,.07); }
@@ -672,6 +677,22 @@ a { text-decoration: none; color: inherit; }
   </div>
 </div>
 
+<!-- SCREEN: FAVORITE CHAT (reached from a favorite's detail sheet, not bottom nav) -->
+<div class="screen" id="screenFavoriteChat">
+  <div class="chat-screen">
+    <div class="chat-header">
+      <button class="fav-chat-back" onclick="closeFavoriteChat()">← Назад к избранному</button>
+      <div class="chat-eyebrow">AI · Обсуждение тендера</div>
+      <div class="profile-title" id="favChatTenderTitle" style="font-size:16px"></div>
+    </div>
+    <div class="chat-messages" id="favChatMessages"></div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="favChatInput" type="text" placeholder="Спроси что-нибудь про этот тендер..." onkeydown="if(event.key==='Enter')sendFavoriteChatMessage()">
+      <button class="chat-send-btn" id="favChatSendBtn" onclick="sendFavoriteChatMessage()">→</button>
+    </div>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <button class="nav-btn active" id="navTenders" onclick="switchScreen('tenders')">
@@ -861,7 +882,8 @@ function openSheet(t, isFavorite = false) {
       : '<button class="open-tender-btn disabled">Ссылка недоступна</button>') +
 
     (isFavorite
-      ? '<button class="favorite-btn remove" onclick="removeFavorite(\'' + t.id + '\')">✕ Удалить из избранного</button>'
+      ? '<button class="favorite-btn" onclick="openFavoriteChat(\'' + t.id + '\', \'' + encodeURIComponent(t.title || '') + '\')">💬 Обсудить с AI</button>' +
+        '<button class="favorite-btn remove" onclick="removeFavorite(\'' + t.id + '\')">✕ Удалить из избранного</button>'
       : '<button class="favorite-btn" onclick="addToFavorite(\'' + t.id + '\')">☆ В избранное</button>');
 
   document.getElementById('overlay').classList.add('open');
@@ -1201,8 +1223,8 @@ function formatChatTime(iso) {
   return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
-function renderChatMessage(role, content, timestamp) {
-  const container = document.getElementById('chatMessages');
+function renderChatMessage(role, content, timestamp, containerId = 'chatMessages') {
+  const container = document.getElementById(containerId);
   const isClient = role === 'client';
 
   const row = document.createElement('div');
@@ -1233,11 +1255,11 @@ function renderChatMessage(role, content, timestamp) {
   container.scrollTop = container.scrollHeight;
 }
 
-function showTypingIndicator() {
-  const container = document.getElementById('chatMessages');
+function showTypingIndicator(containerId = 'chatMessages', indicatorId = 'typingIndicator') {
+  const container = document.getElementById(containerId);
   const row = document.createElement('div');
   row.className = 'chat-row bot';
-  row.id = 'typingIndicator';
+  row.id = indicatorId;
 
   const avatar = document.createElement('div');
   avatar.className = 'chat-avatar';
@@ -1253,8 +1275,8 @@ function showTypingIndicator() {
   container.scrollTop = container.scrollHeight;
 }
 
-function hideTypingIndicator() {
-  const el = document.getElementById('typingIndicator');
+function hideTypingIndicator(indicatorId = 'typingIndicator') {
+  const el = document.getElementById(indicatorId);
   if (el) el.remove();
 }
 
@@ -1318,6 +1340,85 @@ async function sendChatMessage() {
     showToast('Ошибка при отправке сообщения');
   } finally {
     chatSending = false;
+    input.disabled = false;
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+// ── FAVORITE CHAT ──
+let currentFavoriteId = null;
+let favChatSending = false;
+
+function openFavoriteChat(favoriteId, encodedTitle) {
+  currentFavoriteId = favoriteId;
+  closeSheet();
+  document.getElementById('favChatTenderTitle').textContent = decodeURIComponent(encodedTitle || '');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screenFavoriteChat').classList.add('active');
+  document.getElementById('refreshBtn').style.display = 'none';
+  loadFavoriteChatHistory();
+}
+
+function closeFavoriteChat() {
+  currentFavoriteId = null;
+  switchScreen('favorites');
+}
+
+async function loadFavoriteChatHistory() {
+  const container = document.getElementById('favChatMessages');
+  container.innerHTML = '';
+  try {
+    const res = await fetch(FAVORITES_URL + '/' + currentFavoriteId + '/chat', { headers: authHeaders() });
+    if (!res.ok) { showToast('Ошибка загрузки чата'); return; }
+    const data = await res.json();
+    const messages = data.messages || [];
+    if (messages.length === 0) {
+      renderChatMessage('bot', 'Спроси меня что угодно про этот тендер — требования, риски, стоит ли подавать заявку.', null, 'favChatMessages');
+    } else {
+      messages.forEach(m => renderChatMessage(m.role, m.content, m.created_at, 'favChatMessages'));
+    }
+  } catch (e) {
+    showToast('Ошибка загрузки чата');
+  }
+}
+
+async function sendFavoriteChatMessage() {
+  if (favChatSending || !currentFavoriteId) return;
+  const input = document.getElementById('favChatInput');
+  const message = input.value.trim();
+  if (!message) return;
+
+  const btn = document.getElementById('favChatSendBtn');
+  favChatSending = true;
+  input.disabled = true;
+  btn.disabled = true;
+  renderChatMessage('client', message, null, 'favChatMessages');
+  input.value = '';
+  showTypingIndicator('favChatMessages', 'favTypingIndicator');
+
+  try {
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30000);
+    const res = await fetch(FAVORITES_URL + '/' + currentFavoriteId + '/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ message }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    hideTypingIndicator('favTypingIndicator');
+    if (!res.ok) {
+      showToast('Ошибка при отправке сообщения');
+      return;
+    }
+    const data = await res.json();
+    renderChatMessage('bot', data.reply || 'Извините, что-то пошло не так.', null, 'favChatMessages');
+  } catch (e) {
+    hideTypingIndicator('favTypingIndicator');
+    showToast('Ошибка при отправке сообщения');
+  } finally {
+    favChatSending = false;
     input.disabled = false;
     btn.disabled = false;
     input.focus();
