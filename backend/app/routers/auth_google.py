@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 import httpx
 from fastapi import APIRouter, Cookie
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from pydantic import BaseModel
 
 from app.auth.dependencies import SESSION_COOKIE_NAME, resolve_or_create_tenant_by_email
 from app.auth.session import create_session_token, verify_session_token
@@ -17,8 +18,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 STATE_COOKIE_NAME = "google_oauth_state"
+VIA_COOKIE_NAME = "google_oauth_via"
 STATE_MAX_AGE_SECONDS = 5 * 60
 SESSION_MAX_AGE_SECONDS = 30 * 24 * 3600
+
+# Public info (a bot's @username is how anyone starts it, not a secret) --
+# one-line change if the bot is ever renamed.
+TELEGRAM_BOT_USERNAME = "Solura_tenderagentbot"
+
+EXCHANGE_TOKEN_MAX_AGE_SECONDS = 2 * 60
+
+# Google blocks OAuth sign-in from embedded webviews it flags as insecure --
+# Telegram's mobile Mini App webview gets flagged this way (desktop's
+# doesn't). Fix: escape to the phone's real browser for the Google step
+# (see login_page's platform check + Telegram.WebApp.openLink), then hand
+# the resulting session back to the Mini App via a one-time exchange token
+# carried on a `https://t.me/<bot>?startapp=<token>` deep link, since the
+# external browser and the Mini App's embedded webview don't share cookies.
+# In-memory and short-lived by design -- a restart just means an in-flight
+# login has to be retried, never a security concern.
+_pending_exchanges: dict[str, dict] = {}
 
 LOGIN_PAGE_HTML = """<!DOCTYPE html>
 <html lang="ru">
@@ -26,6 +45,7 @@ LOGIN_PAGE_HTML = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tender Agent — Вход</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -56,10 +76,26 @@ LOGIN_PAGE_HTML = """<!DOCTYPE html>
   <h1>Tender Agent</h1>
   <p>Войдите, чтобы открыть панель тендеров</p>
   {error_html}
-  <a class="google-btn" href="/api/auth/google/start">Войти через Google</a>
+  <a class="google-btn" id="googleBtn" href="/api/auth/google/start">Войти через Google</a>
   <div class="legal-links">
     <a href="/terms">Условия использования</a> · <a href="/privacy">Конфиденциальность</a>
   </div>
+  <script>
+    // Mobile Telegram's embedded webview gets blocked by Google's OAuth
+    // security check; desktop Telegram doesn't. Only mobile needs the
+    // escape-to-real-browser + deep-link-back dance.
+    if (window.Telegram?.WebApp) {
+      Telegram.WebApp.ready();
+      const platform = Telegram.WebApp.platform;
+      if (platform === 'android' || platform === 'ios') {
+        const btn = document.getElementById('googleBtn');
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          Telegram.WebApp.openLink('/api/auth/google/start?via=telegram_deeplink');
+        });
+      }
+    }
+  </script>
 </body>
 </html>"""
 
@@ -79,12 +115,21 @@ def login_page(error: str | None = None) -> HTMLResponse:
     return HTMLResponse(LOGIN_PAGE_HTML.replace("{error_html}", error_html))
 
 
-def _issue_session_redirect(email: str, tenant_id: str) -> RedirectResponse:
+def _create_session_cookie_value(email: str, tenant_id: str, picture: str | None) -> str:
     settings = get_settings()
-    token = create_session_token(
-        {"email": email, "tenantId": tenant_id, "exp": time.time() + SESSION_MAX_AGE_SECONDS},
+    return create_session_token(
+        {
+            "email": email,
+            "tenantId": tenant_id,
+            "picture": picture,
+            "exp": time.time() + SESSION_MAX_AGE_SECONDS,
+        },
         settings.session_secret,
     )
+
+
+def _issue_session_redirect(email: str, tenant_id: str, picture: str | None = None) -> RedirectResponse:
+    token = _create_session_cookie_value(email, tenant_id, picture)
     response = RedirectResponse("/")
     response.set_cookie(
         SESSION_COOKIE_NAME,
@@ -99,7 +144,7 @@ def _issue_session_redirect(email: str, tenant_id: str) -> RedirectResponse:
 
 
 @router.get("/api/auth/google/start", include_in_schema=False)
-def google_oauth_start():
+def google_oauth_start(via: str | None = None):
     settings = get_settings()
 
     if settings.dev_bypass_email and settings.environment != "production":
@@ -136,13 +181,31 @@ def google_oauth_start():
         max_age=STATE_MAX_AGE_SECONDS,
         path="/api/auth/google",
     )
+    if via == "telegram_deeplink":
+        response.set_cookie(
+            VIA_COOKIE_NAME,
+            "telegram_deeplink",
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=STATE_MAX_AGE_SECONDS,
+            path="/api/auth/google",
+        )
     return response
 
 
 def _error_redirect(reason: str) -> RedirectResponse:
     response = RedirectResponse(f"/login?error={reason}")
     response.delete_cookie(STATE_COOKIE_NAME, path="/api/auth/google")
+    response.delete_cookie(VIA_COOKIE_NAME, path="/api/auth/google")
     return response
+
+
+def _prune_expired_exchanges() -> None:
+    now = time.time()
+    expired = [token for token, data in _pending_exchanges.items() if data["exp"] < now]
+    for token in expired:
+        del _pending_exchanges[token]
 
 
 @router.get("/api/auth/google/callback", include_in_schema=False)
@@ -150,6 +213,7 @@ def google_oauth_callback(
     code: str | None = None,
     state: str | None = None,
     oauth_state: str | None = Cookie(None, alias=STATE_COOKIE_NAME),
+    oauth_via: str | None = Cookie(None, alias=VIA_COOKIE_NAME),
 ):
     """Google's OAuth redirect target. No `next`/redirect-target query param
     is ever honored here -- the post-login destination is always "/",
@@ -209,8 +273,53 @@ def google_oauth_callback(
         logger.exception("Failed to resolve or create tenant for email %s", email)
         return _error_redirect("tenant")
 
-    response = _issue_session_redirect(email, tenant_id)
+    picture = userinfo.get("picture")
+
+    if oauth_via == "telegram_deeplink":
+        _prune_expired_exchanges()
+        exchange_token = secrets.token_urlsafe(24)
+        _pending_exchanges[exchange_token] = {
+            "email": email,
+            "tenantId": tenant_id,
+            "picture": picture,
+            "exp": time.time() + EXCHANGE_TOKEN_MAX_AGE_SECONDS,
+        }
+        response = RedirectResponse(f"https://t.me/{TELEGRAM_BOT_USERNAME}?startapp={exchange_token}")
+        response.delete_cookie(STATE_COOKIE_NAME, path="/api/auth/google")
+        response.delete_cookie(VIA_COOKIE_NAME, path="/api/auth/google")
+        return response
+
+    response = _issue_session_redirect(email, tenant_id, picture)
     response.delete_cookie(STATE_COOKIE_NAME, path="/api/auth/google")
+    return response
+
+
+class ExchangeTokenPayload(BaseModel):
+    token: str
+
+
+@router.post("/api/auth/exchange-token", include_in_schema=False)
+def exchange_token(payload: ExchangeTokenPayload):
+    """Called from *within* the Mini App's own webview after it reopens via
+    the `startapp` deep link -- this is the one request that can actually
+    set the session cookie in the Mini App's cookie jar, since it's
+    same-origin from inside the app itself."""
+    _prune_expired_exchanges()
+    data = _pending_exchanges.pop(payload.token, None)
+    if data is None:
+        return JSONResponse({"ok": False, "error": "invalid or expired token"}, status_code=400)
+
+    token = _create_session_cookie_value(data["email"], data["tenantId"], data["picture"])
+    response = JSONResponse({"ok": True})
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=SESSION_MAX_AGE_SECONDS,
+        path="/",
+    )
     return response
 
 
@@ -229,11 +338,13 @@ def get_current_session_user(session_token: str | None = Cookie(None, alias=SESS
     account menu (Telegram already shows the user's own identity via its
     own chrome)."""
     if session_token is None:
-        return {"email": None}
+        return {"email": None, "picture": None}
 
     settings = get_settings()
     if not settings.session_secret:
-        return {"email": None}
+        return {"email": None, "picture": None}
 
     payload = verify_session_token(session_token, settings.session_secret)
-    return {"email": payload["email"] if payload else None}
+    if not payload:
+        return {"email": None, "picture": None}
+    return {"email": payload["email"], "picture": payload.get("picture")}

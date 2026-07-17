@@ -198,27 +198,33 @@ def test_logout_clears_session_cookie():
     assert SESSION_COOKIE_NAME in set_cookie
 
 
-def test_me_returns_email_for_a_valid_session_cookie(monkeypatch):
+def test_me_returns_email_and_picture_for_a_valid_session_cookie(monkeypatch):
     monkeypatch.setattr("app.routers.auth_google.get_settings", lambda: _settings(session_secret="secret"))
     import time as time_module
 
     from app.auth.session import create_session_token
 
     token = create_session_token(
-        {"email": "owner@example.com", "tenantId": TENANT_ID, "exp": time_module.time() + 3600}, "secret"
+        {
+            "email": "owner@example.com",
+            "tenantId": TENANT_ID,
+            "picture": "https://example.com/photo.jpg",
+            "exp": time_module.time() + 3600,
+        },
+        "secret",
     )
 
     response = client.get("/api/auth/me", cookies={SESSION_COOKIE_NAME: token})
 
     assert response.status_code == 200
-    assert response.json() == {"email": "owner@example.com"}
+    assert response.json() == {"email": "owner@example.com", "picture": "https://example.com/photo.jpg"}
 
 
 def test_me_returns_null_email_with_no_session_cookie():
     response = client.get("/api/auth/me")
 
     assert response.status_code == 200
-    assert response.json() == {"email": None}
+    assert response.json() == {"email": None, "picture": None}
 
 
 def test_me_returns_null_email_when_web_login_not_configured(monkeypatch):
@@ -227,7 +233,7 @@ def test_me_returns_null_email_when_web_login_not_configured(monkeypatch):
     response = client.get("/api/auth/me", cookies={SESSION_COOKIE_NAME: "whatever"})
 
     assert response.status_code == 200
-    assert response.json() == {"email": None}
+    assert response.json() == {"email": None, "picture": None}
 
 
 def test_me_returns_null_email_for_invalid_session_cookie(monkeypatch):
@@ -236,4 +242,4 @@ def test_me_returns_null_email_for_invalid_session_cookie(monkeypatch):
     response = client.get("/api/auth/me", cookies={SESSION_COOKIE_NAME: "garbage"})
 
     assert response.status_code == 200
-    assert response.json() == {"email": None}
+    assert response.json() == {"email": None, "picture": None}
