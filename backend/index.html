@@ -838,6 +838,20 @@ function showToast(msg, ms = 2800) {
   setTimeout(() => t.classList.remove('show'), ms);
 }
 
+const CHAT_ERROR_MESSAGES = {
+  'Daily message limit reached, try again tomorrow': 'Дневной лимит сообщений исчерпан, попробуй завтра',
+  'Sending messages too quickly, slow down': 'Слишком много сообщений подряд, подожди немного',
+};
+
+async function chatErrorMessage(res) {
+  try {
+    const body = await res.json();
+    return CHAT_ERROR_MESSAGES[body.detail] || 'Ошибка при отправке сообщения';
+  } catch (e) {
+    return 'Ошибка при отправке сообщения';
+  }
+}
+
 function sc(v) { return v >= 70 ? 'high' : v >= 40 ? 'mid' : 'low'; }
 
 function criterionColor(v) {
@@ -1373,7 +1387,7 @@ async function sendChatMessage() {
     clearTimeout(timer);
     hideTypingIndicator();
     if (!res.ok) {
-      showToast('Ошибка при отправке сообщения');
+      showToast(await chatErrorMessage(res));
       return;
     }
     const data = await res.json();
@@ -1452,7 +1466,7 @@ async function sendFavoriteChatMessage() {
     clearTimeout(timer);
     hideTypingIndicator('favTypingIndicator');
     if (!res.ok) {
-      showToast('Ошибка при отправке сообщения');
+      showToast(await chatErrorMessage(res));
       return;
     }
     const data = await res.json();
