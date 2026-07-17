@@ -8,37 +8,9 @@ from postgrest.exceptions import APIError
 
 from app.auth.dependencies import SESSION_COOKIE_NAME, get_current_tenant_id, resolve_or_create_tenant_by_email
 from app.auth.session import create_session_token
-from tests.helpers import sign_init_data
 
-BOT_TOKEN = "123456:TEST-fake-token-for-tests"
 TENANT_ID = "005ece7a-2af4-4f22-84f7-25d5e743af9e"
 SESSION_SECRET = "test-session-secret"
-
-
-class _FakeQuery:
-    def __init__(self, data):
-        self._data = data
-
-    def select(self, *_a, **_k):
-        return self
-
-    def eq(self, *_a, **_k):
-        return self
-
-    def limit(self, *_a, **_k):
-        return self
-
-    def execute(self):
-        return SimpleNamespace(data=self._data)
-
-
-class _FakeClient:
-    def __init__(self, tenant_users_rows):
-        self._rows = tenant_users_rows
-
-    def table(self, name):
-        assert name == "tenant_users"
-        return _FakeQuery(self._rows)
 
 
 def _build_app() -> FastAPI:
@@ -49,95 +21,6 @@ def _build_app() -> FastAPI:
         return {"tenant_id": tenant_id}
 
     return app
-
-
-def _signed_init_data(telegram_user_id: int) -> str:
-    fields = {
-        "user": f'{{"id":{telegram_user_id}}}',
-        "auth_date": str(int(time.time())),
-    }
-    return sign_init_data(fields, BOT_TOKEN)
-
-
-def test_resolves_known_telegram_user_to_their_tenant(monkeypatch):
-    monkeypatch.setattr(
-        "app.auth.dependencies.get_supabase_client",
-        lambda: _FakeClient([{"tenant_id": TENANT_ID}]),
-    )
-    app = _build_app()
-    client = TestClient(app)
-
-    response = client.get(
-        "/whoami",
-        headers={"Authorization": f"tma {_signed_init_data(111)}"},
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {"tenant_id": TENANT_ID}
-
-
-def test_rejects_missing_authorization_header_and_missing_session_cookie():
-    app = _build_app()
-    client = TestClient(app)
-
-    response = client.get("/whoami")
-
-    assert response.status_code == 401
-
-
-def test_rejects_wrong_auth_scheme():
-    app = _build_app()
-    client = TestClient(app)
-
-    response = client.get("/whoami", headers={"Authorization": "Bearer something"})
-
-    assert response.status_code == 401
-
-
-def test_rejects_telegram_user_with_no_tenant(monkeypatch):
-    monkeypatch.setattr(
-        "app.auth.dependencies.get_supabase_client",
-        lambda: _FakeClient([]),
-    )
-    app = _build_app()
-    client = TestClient(app)
-
-    response = client.get(
-        "/whoami",
-        headers={"Authorization": f"tma {_signed_init_data(999)}"},
-    )
-
-    assert response.status_code == 403
-
-
-def test_rejects_init_data_missing_user_field():
-    app = _build_app()
-    client = TestClient(app)
-
-    fields = {"auth_date": str(int(time.time()))}
-    init_data = sign_init_data(fields, BOT_TOKEN)
-
-    response = client.get(
-        "/whoami",
-        headers={"Authorization": f"tma {init_data}"},
-    )
-
-    assert response.status_code == 401
-
-
-def test_rejects_init_data_with_non_json_user_field():
-    app = _build_app()
-    client = TestClient(app)
-
-    fields = {"user": "not-json", "auth_date": str(int(time.time()))}
-    init_data = sign_init_data(fields, BOT_TOKEN)
-
-    response = client.get(
-        "/whoami",
-        headers={"Authorization": f"tma {init_data}"},
-    )
-
-    assert response.status_code == 401
 
 
 def test_resolves_session_cookie_to_its_tenant(monkeypatch):
@@ -155,6 +38,15 @@ def test_resolves_session_cookie_to_its_tenant(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == {"tenant_id": TENANT_ID}
+
+
+def test_rejects_missing_session_cookie():
+    app = _build_app()
+    client = TestClient(app)
+
+    response = client.get("/whoami")
+
+    assert response.status_code == 401
 
 
 def test_rejects_session_cookie_when_web_login_not_configured(monkeypatch):
@@ -182,6 +74,22 @@ def test_rejects_invalid_session_cookie(monkeypatch):
     client = TestClient(app)
 
     response = client.get("/whoami", cookies={SESSION_COOKIE_NAME: "garbage"})
+
+    assert response.status_code == 401
+
+
+def test_rejects_expired_session_cookie(monkeypatch):
+    monkeypatch.setattr(
+        "app.auth.dependencies.get_settings",
+        lambda: SimpleNamespace(session_secret=SESSION_SECRET),
+    )
+    app = _build_app()
+    client = TestClient(app)
+    token = create_session_token(
+        {"email": "owner@example.com", "tenantId": TENANT_ID, "exp": time.time() - 10}, SESSION_SECRET
+    )
+
+    response = client.get("/whoami", cookies={SESSION_COOKIE_NAME: token})
 
     assert response.status_code == 401
 
@@ -269,18 +177,3 @@ def test_resolve_or_create_reraises_non_unique_violation_errors():
 
     with pytest.raises(APIError):
         resolve_or_create_tenant_by_email("broken@example.com", "Broken", client)
-
-
-def test_rejects_init_data_with_user_json_missing_id():
-    app = _build_app()
-    client = TestClient(app)
-
-    fields = {"user": '{"first_name":"Test"}', "auth_date": str(int(time.time()))}
-    init_data = sign_init_data(fields, BOT_TOKEN)
-
-    response = client.get(
-        "/whoami",
-        headers={"Authorization": f"tma {init_data}"},
-    )
-
-    assert response.status_code == 401

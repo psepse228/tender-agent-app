@@ -165,6 +165,19 @@ a { text-decoration: none; color: inherit; }
 }
 .account-menu-dropdown-logout:disabled { opacity: .5; cursor: default; }
 
+/* ─── TELEGRAM LINK BANNER ─── */
+.telegram-link-banner {
+  display: none; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 16px; background: rgba(56,189,248,.08); border-bottom: 1px solid var(--border-c);
+  font-size: 11px; color: rgba(241,245,249,.8); position: relative; z-index: 40;
+}
+.telegram-link-banner.show { display: flex; }
+.telegram-link-banner button {
+  flex-shrink: 0; background: var(--grad); border: none; border-radius: 9px;
+  padding: 7px 14px; font-family: var(--fd); font-size: 11px; font-weight: 700;
+  color: var(--bg); cursor: pointer;
+}
+
 /* ─── BOTTOM NAV ─── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
@@ -609,6 +622,12 @@ a { text-decoration: none; color: inherit; }
   </div>
 </div>
 
+<!-- TELEGRAM LINK BANNER -->
+<div class="telegram-link-banner" id="telegramLinkBanner">
+  <span>🔔 Подключи Telegram, чтобы получать уведомления о лучших тендерах сразу</span>
+  <button onclick="linkTelegram()">Подключить</button>
+</div>
+
 <!-- SCREEN: TENDERS -->
 <div class="screen active" id="screenTenders">
   <div class="dashboard">
@@ -763,12 +782,10 @@ let currentFilter = 'all';
 if (window.Telegram?.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
 
 function authHeaders() {
-  // Inside Telegram, prove identity via initData. Outside Telegram (a plain
-  // browser after Google login) send no Authorization header at all -- the
-  // tender_agent_session cookie set by /api/auth/google/callback is sent
-  // automatically with same-origin fetches, and the backend falls back to it.
-  const initData = window.Telegram?.WebApp?.initData;
-  return initData ? { 'Authorization': 'tma ' + initData } : {};
+  // Google login (via the tender_agent_session cookie) is the only auth
+  // path now -- it's sent automatically with same-origin fetches, so no
+  // Authorization header is ever needed here, Telegram or not.
+  return {};
 }
 
 function normalizeTender(t) {
@@ -1138,7 +1155,7 @@ function setTime() {
 async function loadTenders() {
   try {
     const res  = await fetch(GET_URL, { headers: authHeaders() });
-    if (res.status === 401 && !window.Telegram?.WebApp?.initData) {
+    if (res.status === 401) {
       window.location.href = '/login';
       return;
     }
@@ -1452,9 +1469,6 @@ async function sendFavoriteChatMessage() {
 }
 
 // ── ACCOUNT MENU ──
-// Only ever populated for the Google-OAuth web-login path -- a Telegram
-// session has no session cookie, so /api/auth/me returns {email: null} and
-// the menu stays hidden (Telegram already shows the user's own identity).
 async function loadAccountMenu() {
   try {
     const res = await fetch('/api/auth/me', { headers: authHeaders() });
@@ -1495,7 +1509,44 @@ async function logoutAccount() {
   }
 }
 
+// ── TELEGRAM LINK (notifications only, never a login path) ──
+// Only relevant when actually opened inside Telegram -- a plain browser
+// session has no Telegram identity to offer linking at all.
+async function maybeShowTelegramLinkPrompt() {
+  const initData = window.Telegram?.WebApp?.initData;
+  if (!initData) return;
+
+  try {
+    const res = await fetch('/api/link-telegram', { headers: authHeaders() });
+    if (!res.ok) return; // not logged in yet, or other issue -- stay silent
+    const status = await res.json();
+    if (!status.linked) document.getElementById('telegramLinkBanner').classList.add('show');
+  } catch (e) { /* best-effort */ }
+}
+
+async function linkTelegram() {
+  const initData = window.Telegram?.WebApp?.initData;
+  if (!initData) return;
+  try {
+    const res = await fetch('/api/link-telegram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ init_data: initData }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      showToast(body.detail || 'Не удалось подключить Telegram');
+      return;
+    }
+    document.getElementById('telegramLinkBanner').classList.remove('show');
+    showToast('Telegram подключён для уведомлений');
+  } catch (e) {
+    showToast('Не удалось подключить Telegram');
+  }
+}
+
 loadAccountMenu();
+maybeShowTelegramLinkPrompt();
 loadTenders();
 </script>
 </body>

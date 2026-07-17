@@ -1,14 +1,14 @@
-import time
 from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.auth.dependencies import SESSION_COOKIE_NAME
 from app.main import app
-from tests.helpers import sign_init_data
+from tests.helpers import session_cookie
 
-BOT_TOKEN = "123456:TEST-fake-token-for-tests"
 TENANT_ID = "005ece7a-2af4-4f22-84f7-25d5e743af9e"
+SESSION_SECRET = "test-session-secret-for-all-router-tests"
 
 client = TestClient(app)
 
@@ -89,21 +89,16 @@ class _FakeClient:
         return _FakeTable(name, self.store)
 
 
-def _auth_header(telegram_user_id: int) -> dict[str, str]:
-    fields = {"user": f'{{"id":{telegram_user_id}}}', "auth_date": str(int(time.time()))}
-    return {"Authorization": f"tma {sign_init_data(fields, BOT_TOKEN)}"}
+def _auth_cookie(tenant_id: str) -> dict[str, str]:
+    return {SESSION_COOKIE_NAME: session_cookie(tenant_id, SESSION_SECRET)}
 
 
 def test_get_returns_empty_history_for_new_tenant(monkeypatch):
-    store = {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
-        "profile_chat_messages": [],
-    }
+    store = {"profile_chat_messages": []}
     fake_client = _FakeClient(store)
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.profile_chat.get_supabase_client", lambda: fake_client)
 
-    response = client.get("/api/profile-chat", headers=_auth_header(111))
+    response = client.get("/api/profile-chat", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 200
     assert response.json() == {"messages": []}
@@ -111,7 +106,6 @@ def test_get_returns_empty_history_for_new_tenant(monkeypatch):
 
 def test_get_returns_only_caller_tenants_messages(monkeypatch):
     store = {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
         "profile_chat_messages": [
             {
                 "tenant_id": TENANT_ID,
@@ -128,10 +122,9 @@ def test_get_returns_only_caller_tenants_messages(monkeypatch):
         ],
     }
     fake_client = _FakeClient(store)
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.profile_chat.get_supabase_client", lambda: fake_client)
 
-    response = client.get("/api/profile-chat", headers=_auth_header(111))
+    response = client.get("/api/profile-chat", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 200
     contents = [m["content"] for m in response.json()["messages"]]
@@ -145,13 +138,8 @@ def test_get_requires_auth():
 
 
 def test_post_persists_client_message_and_bot_reply(monkeypatch):
-    store = {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
-        "profile_chat_messages": [],
-        "company_profile": [],
-    }
+    store = {"profile_chat_messages": [], "company_profile": []}
     fake_client = _FakeClient(store)
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.profile_chat.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr(
         "app.routers.profile_chat.generate_reply",
@@ -161,7 +149,7 @@ def test_post_persists_client_message_and_bot_reply(monkeypatch):
         },
     )
 
-    response = client.post("/api/profile-chat", headers=_auth_header(111), json={"message": "Hi"})
+    response = client.post("/api/profile-chat", cookies=_auth_cookie(TENANT_ID), json={"message": "Hi"})
 
     assert response.status_code == 200
     assert response.json() == {"reply": "Расскажи о компании", "profile_text": "We build roads."}
@@ -171,13 +159,8 @@ def test_post_persists_client_message_and_bot_reply(monkeypatch):
 
 
 def test_post_persists_client_message_even_if_generation_fails(monkeypatch):
-    store = {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
-        "profile_chat_messages": [],
-        "company_profile": [],
-    }
+    store = {"profile_chat_messages": [], "company_profile": []}
     fake_client = _FakeClient(store)
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.profile_chat.get_supabase_client", lambda: fake_client)
 
     def raise_error(conversation, profile_text):
@@ -186,23 +169,18 @@ def test_post_persists_client_message_even_if_generation_fails(monkeypatch):
     monkeypatch.setattr("app.routers.profile_chat.generate_reply", raise_error)
 
     with pytest.raises(RuntimeError):
-        client.post("/api/profile-chat", headers=_auth_header(111), json={"message": "Hi"})
+        client.post("/api/profile-chat", cookies=_auth_cookie(TENANT_ID), json={"message": "Hi"})
 
     assert len(store["profile_chat_messages"]) == 1
     assert store["profile_chat_messages"][0]["role"] == "client"
 
 
 def test_post_rejects_empty_message(monkeypatch):
-    store = {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
-        "profile_chat_messages": [],
-        "company_profile": [],
-    }
+    store = {"profile_chat_messages": [], "company_profile": []}
     fake_client = _FakeClient(store)
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.profile_chat.get_supabase_client", lambda: fake_client)
 
-    response = client.post("/api/profile-chat", headers=_auth_header(111), json={"message": "   "})
+    response = client.post("/api/profile-chat", cookies=_auth_cookie(TENANT_ID), json={"message": "   "})
 
     assert response.status_code == 400
     assert store["profile_chat_messages"] == []

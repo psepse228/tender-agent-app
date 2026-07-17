@@ -1,14 +1,14 @@
-import time
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
+from app.auth.dependencies import SESSION_COOKIE_NAME
 from app.main import app
-from tests.helpers import sign_init_data
+from tests.helpers import session_cookie
 
-BOT_TOKEN = "123456:TEST-fake-token-for-tests"
 TENANT_ID = "005ece7a-2af4-4f22-84f7-25d5e743af9e"
 TENDER_ID = "a1b2c3d4-0000-0000-0000-000000000001"
+SESSION_SECRET = "test-session-secret-for-all-router-tests"
 
 client = TestClient(app)
 
@@ -80,9 +80,8 @@ class _FakeClient:
         return _FakeTable(name, self.store)
 
 
-def _auth_header(telegram_user_id: int) -> dict[str, str]:
-    fields = {"user": f'{{"id":{telegram_user_id}}}', "auth_date": str(int(time.time()))}
-    return {"Authorization": f"tma {sign_init_data(fields, BOT_TOKEN)}"}
+def _auth_cookie(tenant_id: str) -> dict[str, str]:
+    return {SESSION_COOKIE_NAME: session_cookie(tenant_id, SESSION_SECRET)}
 
 
 def _base_store(**tender_overrides):
@@ -95,14 +94,12 @@ def _base_store(**tender_overrides):
     }
     tender.update(tender_overrides)
     return {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
         "tenders": [tender],
         "favorite_tenders": [],
     }
 
 
 def _patch(monkeypatch, fake_client):
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.favorites.get_supabase_client", lambda: fake_client)
 
 
@@ -114,7 +111,7 @@ def test_lists_favorites_for_caller_tenant(monkeypatch):
     ]
     _patch(monkeypatch, _FakeClient(store))
 
-    response = client.get("/api/favorites", headers=_auth_header(111))
+    response = client.get("/api/favorites", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 200
     titles = [f["title"] for f in response.json()["favorites"]]
@@ -132,7 +129,7 @@ def test_adds_a_tender_to_favorites(monkeypatch):
     _patch(monkeypatch, _FakeClient(store))
 
     response = client.post(
-        "/api/favorites", headers=_auth_header(111), json={"tender_id": TENDER_ID}
+        "/api/favorites", cookies=_auth_cookie(TENANT_ID), json={"tender_id": TENDER_ID}
     )
 
     assert response.status_code == 200
@@ -150,7 +147,7 @@ def test_returns_404_for_a_tender_from_another_tenant(monkeypatch):
     _patch(monkeypatch, _FakeClient(store))
 
     response = client.post(
-        "/api/favorites", headers=_auth_header(111), json={"tender_id": TENDER_ID}
+        "/api/favorites", cookies=_auth_cookie(TENANT_ID), json={"tender_id": TENDER_ID}
     )
 
     assert response.status_code == 404
@@ -161,8 +158,8 @@ def test_favoriting_the_same_tender_twice_does_not_duplicate(monkeypatch):
     store = _base_store()
     _patch(monkeypatch, _FakeClient(store))
 
-    client.post("/api/favorites", headers=_auth_header(111), json={"tender_id": TENDER_ID})
-    response = client.post("/api/favorites", headers=_auth_header(111), json={"tender_id": TENDER_ID})
+    client.post("/api/favorites", cookies=_auth_cookie(TENANT_ID), json={"tender_id": TENDER_ID})
+    response = client.post("/api/favorites", cookies=_auth_cookie(TENANT_ID), json={"tender_id": TENDER_ID})
 
     assert response.status_code == 200
     assert response.json()["already_existed"] is True
@@ -180,7 +177,7 @@ def test_removes_a_favorite(monkeypatch):
     store["favorite_tenders"] = [{"id": "fav-1", "tenant_id": TENANT_ID, "title": "Saved one"}]
     _patch(monkeypatch, _FakeClient(store))
 
-    response = client.delete("/api/favorites/fav-1", headers=_auth_header(111))
+    response = client.delete("/api/favorites/fav-1", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 200
     assert store["favorite_tenders"] == []
@@ -194,7 +191,7 @@ def test_removing_a_favorite_does_not_affect_other_tenants(monkeypatch):
     ]
     _patch(monkeypatch, _FakeClient(store))
 
-    client.delete("/api/favorites/fav-2", headers=_auth_header(111))
+    client.delete("/api/favorites/fav-2", cookies=_auth_cookie(TENANT_ID))
 
     assert len(store["favorite_tenders"]) == 2
 
@@ -218,7 +215,6 @@ def _store_with_favorite(**favorite_overrides):
     }
     favorite.update(favorite_overrides)
     return {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
         "favorite_tenders": [favorite],
         "favorite_chat_messages": [],
         "company_profile": [],
@@ -229,7 +225,7 @@ def test_gets_empty_chat_history_for_a_new_favorite(monkeypatch):
     store = _store_with_favorite()
     _patch(monkeypatch, _FakeClient(store))
 
-    response = client.get(f"/api/favorites/{FAVORITE_ID}/chat", headers=_auth_header(111))
+    response = client.get(f"/api/favorites/{FAVORITE_ID}/chat", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 200
     assert response.json() == {"messages": []}
@@ -239,7 +235,7 @@ def test_chat_history_404s_for_a_favorite_from_another_tenant(monkeypatch):
     store = _store_with_favorite(tenant_id="other-tenant")
     _patch(monkeypatch, _FakeClient(store))
 
-    response = client.get(f"/api/favorites/{FAVORITE_ID}/chat", headers=_auth_header(111))
+    response = client.get(f"/api/favorites/{FAVORITE_ID}/chat", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 404
 
@@ -260,7 +256,7 @@ def test_sends_a_favorite_chat_message_and_saves_both_sides(monkeypatch):
 
     response = client.post(
         f"/api/favorites/{FAVORITE_ID}/chat",
-        headers=_auth_header(111),
+        cookies=_auth_cookie(TENANT_ID),
         json={"message": "Какие документы нужны?"},
     )
 
@@ -275,7 +271,7 @@ def test_favorite_chat_post_404s_for_a_favorite_from_another_tenant(monkeypatch)
     _patch(monkeypatch, _FakeClient(store))
 
     response = client.post(
-        f"/api/favorites/{FAVORITE_ID}/chat", headers=_auth_header(111), json={"message": "Hi"}
+        f"/api/favorites/{FAVORITE_ID}/chat", cookies=_auth_cookie(TENANT_ID), json={"message": "Hi"}
     )
 
     assert response.status_code == 404
@@ -287,7 +283,7 @@ def test_favorite_chat_rejects_empty_message(monkeypatch):
     _patch(monkeypatch, _FakeClient(store))
 
     response = client.post(
-        f"/api/favorites/{FAVORITE_ID}/chat", headers=_auth_header(111), json={"message": "   "}
+        f"/api/favorites/{FAVORITE_ID}/chat", cookies=_auth_cookie(TENANT_ID), json={"message": "   "}
     )
 
     assert response.status_code == 400

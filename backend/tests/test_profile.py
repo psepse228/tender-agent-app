@@ -1,13 +1,13 @@
-import time
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
+from app.auth.dependencies import SESSION_COOKIE_NAME
 from app.main import app
-from tests.helpers import sign_init_data
+from tests.helpers import session_cookie
 
-BOT_TOKEN = "123456:TEST-fake-token-for-tests"
 TENANT_ID = "005ece7a-2af4-4f22-84f7-25d5e743af9e"
+SESSION_SECRET = "test-session-secret-for-all-router-tests"
 
 client = TestClient(app)
 
@@ -78,23 +78,18 @@ class _FakeClient:
         return _FakeTable(name, self.store)
 
 
-def _auth_header(telegram_user_id: int) -> dict[str, str]:
-    fields = {"user": f'{{"id":{telegram_user_id}}}', "auth_date": str(int(time.time()))}
-    return {"Authorization": f"tma {sign_init_data(fields, BOT_TOKEN)}"}
+def _auth_cookie(tenant_id: str) -> dict[str, str]:
+    return {SESSION_COOKIE_NAME: session_cookie(tenant_id, SESSION_SECRET)}
 
 
 def test_creates_profile_when_none_exists(monkeypatch):
-    store = {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
-        "company_profile": [],
-    }
+    store = {"company_profile": []}
     fake_client = _FakeClient(store)
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.profile.get_supabase_client", lambda: fake_client)
 
     response = client.post(
         "/api/profile",
-        headers=_auth_header(111),
+        cookies=_auth_cookie(TENANT_ID),
         json={"updates": {"Company Name": "Acme LLC", "Location": "Tashkent"}},
     )
 
@@ -107,17 +102,13 @@ def test_creates_profile_when_none_exists(monkeypatch):
 
 
 def test_updates_existing_profile(monkeypatch):
-    store = {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
-        "company_profile": [{"tenant_id": TENANT_ID, "profile_text": "Old text"}],
-    }
+    store = {"company_profile": [{"tenant_id": TENANT_ID, "profile_text": "Old text"}]}
     fake_client = _FakeClient(store)
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.profile.get_supabase_client", lambda: fake_client)
 
     response = client.post(
         "/api/profile",
-        headers=_auth_header(111),
+        cookies=_auth_cookie(TENANT_ID),
         json={"updates": {"Company Name": "New Name"}},
     )
 
@@ -127,17 +118,13 @@ def test_updates_existing_profile(monkeypatch):
 
 
 def test_skips_empty_values(monkeypatch):
-    store = {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
-        "company_profile": [],
-    }
+    store = {"company_profile": []}
     fake_client = _FakeClient(store)
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.profile.get_supabase_client", lambda: fake_client)
 
     response = client.post(
         "/api/profile",
-        headers=_auth_header(111),
+        cookies=_auth_cookie(TENANT_ID),
         json={"updates": {"Company Name": "Acme LLC", "Location": ""}},
     )
 
@@ -153,35 +140,26 @@ def test_post_requires_auth():
 
 def test_get_returns_profile_text_for_caller_tenant(monkeypatch):
     store = {
-        "tenant_users": [
-            {"telegram_user_id": 111, "tenant_id": TENANT_ID},
-            {"telegram_user_id": 222, "tenant_id": "other-tenant"},
-        ],
         "company_profile": [
             {"tenant_id": TENANT_ID, "profile_text": "Our profile"},
             {"tenant_id": "other-tenant", "profile_text": "Someone else's profile"},
         ],
     }
     fake_client = _FakeClient(store)
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.profile.get_supabase_client", lambda: fake_client)
 
-    response = client.get("/api/profile", headers=_auth_header(111))
+    response = client.get("/api/profile", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 200
     assert response.json() == {"profile_text": "Our profile"}
 
 
 def test_get_returns_null_when_no_profile_exists(monkeypatch):
-    store = {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
-        "company_profile": [],
-    }
+    store = {"company_profile": []}
     fake_client = _FakeClient(store)
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.profile.get_supabase_client", lambda: fake_client)
 
-    response = client.get("/api/profile", headers=_auth_header(111))
+    response = client.get("/api/profile", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 200
     assert response.json() == {"profile_text": None}

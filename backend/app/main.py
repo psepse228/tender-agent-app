@@ -3,7 +3,18 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 
-from app.routers import auth_google, favorites, health, legal, profile, profile_chat, refresh, sources, tenders
+from app.routers import (
+    auth_google,
+    favorites,
+    health,
+    legal,
+    profile,
+    profile_chat,
+    refresh,
+    sources,
+    telegram_link,
+    tenders,
+)
 
 app = FastAPI(title="Tender Agent Backend")
 app.include_router(health.router)
@@ -15,6 +26,7 @@ app.include_router(auth_google.router)
 app.include_router(favorites.router)
 app.include_router(legal.router)
 app.include_router(sources.router)
+app.include_router(telegram_link.router)
 
 
 @app.middleware("http")

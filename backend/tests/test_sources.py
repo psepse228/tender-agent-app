@@ -1,13 +1,13 @@
-import time
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
+from app.auth.dependencies import SESSION_COOKIE_NAME
 from app.main import app
-from tests.helpers import sign_init_data
+from tests.helpers import session_cookie
 
-BOT_TOKEN = "123456:TEST-fake-token-for-tests"
 TENANT_ID = "005ece7a-2af4-4f22-84f7-25d5e743af9e"
+SESSION_SECRET = "test-session-secret-for-all-router-tests"
 
 client = TestClient(app)
 
@@ -70,20 +70,15 @@ class _FakeClient:
         return _FakeTable(name, self.store)
 
 
-def _auth_header(telegram_user_id: int) -> dict[str, str]:
-    fields = {"user": f'{{"id":{telegram_user_id}}}', "auth_date": str(int(time.time()))}
-    return {"Authorization": f"tma {sign_init_data(fields, BOT_TOKEN)}"}
+def _auth_cookie(tenant_id: str) -> dict[str, str]:
+    return {SESSION_COOKIE_NAME: session_cookie(tenant_id, SESSION_SECRET)}
 
 
 def _base_store():
-    return {
-        "tenant_users": [{"telegram_user_id": 111, "tenant_id": TENANT_ID}],
-        "tenant_sources": [],
-    }
+    return {"tenant_sources": []}
 
 
 def _patch(monkeypatch, fake_client):
-    monkeypatch.setattr("app.auth.dependencies.get_supabase_client", lambda: fake_client)
     monkeypatch.setattr("app.routers.sources.get_supabase_client", lambda: fake_client)
 
 
@@ -95,7 +90,7 @@ def test_lists_sources_for_caller_tenant(monkeypatch):
     ]
     _patch(monkeypatch, _FakeClient(store))
 
-    response = client.get("/api/sources", headers=_auth_header(111))
+    response = client.get("/api/sources", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 200
     names = [s["name"] for s in response.json()["sources"]]
@@ -114,7 +109,7 @@ def test_adds_a_source(monkeypatch):
 
     response = client.post(
         "/api/sources",
-        headers=_auth_header(111),
+        cookies=_auth_cookie(TENANT_ID),
         json={"name": "My Own Source", "url": "https://example.com/tenders"},
     )
 
@@ -129,7 +124,7 @@ def test_rejects_a_blank_name(monkeypatch):
     _patch(monkeypatch, _FakeClient(store))
 
     response = client.post(
-        "/api/sources", headers=_auth_header(111), json={"name": "   ", "url": "https://example.com"}
+        "/api/sources", cookies=_auth_cookie(TENANT_ID), json={"name": "   ", "url": "https://example.com"}
     )
 
     assert response.status_code == 422
@@ -141,7 +136,7 @@ def test_rejects_a_non_http_url(monkeypatch):
     _patch(monkeypatch, _FakeClient(store))
 
     response = client.post(
-        "/api/sources", headers=_auth_header(111), json={"name": "Bad", "url": "javascript:alert(1)"}
+        "/api/sources", cookies=_auth_cookie(TENANT_ID), json={"name": "Bad", "url": "javascript:alert(1)"}
     )
 
     assert response.status_code == 422
@@ -159,7 +154,7 @@ def test_removes_a_source(monkeypatch):
     store["tenant_sources"] = [{"id": "src-1", "tenant_id": TENANT_ID, "name": "Mine", "url": "https://x.com"}]
     _patch(monkeypatch, _FakeClient(store))
 
-    response = client.delete("/api/sources/src-1", headers=_auth_header(111))
+    response = client.delete("/api/sources/src-1", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 200
     assert store["tenant_sources"] == []
@@ -173,7 +168,7 @@ def test_removing_a_source_does_not_affect_other_tenants(monkeypatch):
     ]
     _patch(monkeypatch, _FakeClient(store))
 
-    client.delete("/api/sources/src-2", headers=_auth_header(111))
+    client.delete("/api/sources/src-2", cookies=_auth_cookie(TENANT_ID))
 
     assert len(store["tenant_sources"]) == 2
 

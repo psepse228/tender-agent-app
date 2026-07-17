@@ -1,82 +1,35 @@
-import json
-
-from fastapi import Cookie, Header, HTTPException
+from fastapi import Cookie, HTTPException
 from postgrest.exceptions import APIError
 
 from app.auth.session import verify_session_token
-from app.auth.telegram import InitDataError, validate_init_data
 from app.config import get_settings
 from app.db import get_supabase_client
 
 SESSION_COOKIE_NAME = "tender_agent_session"
 
 
-def _tenant_id_from_telegram(authorization: str) -> str:
-    init_data = authorization.removeprefix("tma ")
-    settings = get_settings()
+def get_current_tenant_id(
+    session_cookie: str | None = Cookie(None, alias=SESSION_COOKIE_NAME),
+) -> str:
+    """Google login is the only auth path -- a tenant is identified by its
+    owner_email, resolved via the `tender_agent_session` cookie set by
+    /api/auth/google/callback. This is deliberately the *only* way in: it
+    lets a team share one Google account/tenant, which a per-person
+    Telegram identity couldn't. (A separate, explicit "connect Telegram"
+    step -- see /api/link-telegram -- lets an already-authenticated tenant
+    additionally receive Telegram alerts; it is not a login path.)"""
+    if session_cookie is None:
+        raise HTTPException(status_code=401, detail="not authenticated")
 
-    try:
-        pairs = validate_init_data(init_data, settings.telegram_bot_token)
-    except InitDataError as e:
-        raise HTTPException(status_code=401, detail=str(e))
-
-    try:
-        user = json.loads(pairs["user"])
-        telegram_user_id = user["id"]
-    except (KeyError, TypeError, json.JSONDecodeError):
-        raise HTTPException(status_code=401, detail="invalid user data in initData")
-
-    client = get_supabase_client()
-    response = (
-        client.table("tenant_users")
-        .select("tenant_id")
-        .eq("telegram_user_id", telegram_user_id)
-        .limit(1)
-        .execute()
-    )
-    rows = response.data
-    if not rows:
-        raise HTTPException(
-            status_code=403,
-            detail="No tenant registered for this Telegram account",
-        )
-
-    return rows[0]["tenant_id"]
-
-
-def _tenant_id_from_session(session_token: str) -> str:
     settings = get_settings()
     if not settings.session_secret:
         raise HTTPException(status_code=401, detail="web login is not configured")
 
-    payload = verify_session_token(session_token, settings.session_secret)
+    payload = verify_session_token(session_cookie, settings.session_secret)
     if payload is None:
         raise HTTPException(status_code=401, detail="invalid or expired session")
 
     return payload["tenantId"]
-
-
-def get_current_tenant_id(
-    authorization: str | None = Header(None),
-    session_cookie: str | None = Cookie(None, alias=SESSION_COOKIE_NAME),
-) -> str:
-    """Resolves the caller's tenant from either auth path this backend
-    supports: the Telegram Mini App's `tma <initData>` header, or the
-    `tender_agent_session` cookie set by the Google OAuth web-login flow.
-    Both resolve to the same tenants.id -- an existing Telegram tenant and a
-    self-serve web signup are treated identically everywhere else."""
-    if authorization is not None:
-        if not authorization.startswith("tma "):
-            raise HTTPException(
-                status_code=401,
-                detail="Authorization header must use the 'tma <initData>' scheme",
-            )
-        return _tenant_id_from_telegram(authorization)
-
-    if session_cookie is not None:
-        return _tenant_id_from_session(session_cookie)
-
-    raise HTTPException(status_code=401, detail="not authenticated")
 
 
 def resolve_or_create_tenant_by_email(email: str, name: str | None, client) -> str:
