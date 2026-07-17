@@ -13,6 +13,13 @@ Company profile:
 
 Extract all tenders from the page content and score each for relevance to this company.
 
+Language: this is a Russian-speaking client. Always write "title", "organization",
+"whyParticipate", "risks", and "actionPlan" in Russian, translating from the
+source language if the source page is in English or another language. Never
+leave any of these fields in their original non-Russian language. "budget"
+and "deadline" should also be translated/reformatted into Russian
+conventions (e.g. a date like "July 15, 2026" becomes "15.07.2026").
+
 Scoring rules:
 - If budget is missing or unclear -> set "financial" to 40-50 (NEVER 0)
 - matchPercent = compliance*0.4 + financial*0.2 + feasibility*0.25 + winChance*0.15

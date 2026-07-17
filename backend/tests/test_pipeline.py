@@ -255,6 +255,31 @@ def test_drops_tenders_with_no_title_before_insert(monkeypatch):
     assert [r["title"] for r in store["tenders"]] == ["Valid tender"]
 
 
+def test_drops_tenders_below_the_minimum_relevance_threshold(monkeypatch):
+    store = {"company_profile": [], "tenants": [{"id": TENANT_ID}], "tenders": []}
+
+    def fake_process(source, _profile_text):
+        if source["name"] == "eTender UzEx":
+            return {
+                "name": source["name"],
+                "status": "ok",
+                "tenders": [
+                    {"title": "Junk tender", "matchPercent": 34},
+                    {"title": "Borderline tender", "matchPercent": 40},
+                    {"title": "Good tender", "matchPercent": 75},
+                ],
+            }
+        return {"name": source["name"], "status": "ok", "tenders": []}
+
+    monkeypatch.setattr("app.scraping.pipeline._process_source", fake_process)
+
+    result = refresh_tenant(TENANT_ID, _FakeClient(store))
+
+    remaining_titles = {t["title"] for t in result["tenders"]}
+    assert remaining_titles == {"Borderline tender", "Good tender"}
+    assert {r["title"] for r in store["tenders"]} == {"Borderline tender", "Good tender"}
+
+
 def test_scrapes_tenant_specific_custom_sources_alongside_the_shared_list(monkeypatch):
     store = {
         "company_profile": [],

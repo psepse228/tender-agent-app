@@ -27,6 +27,11 @@ SOURCES = [
 # which only affects the progress readout, never the actual refresh result.
 _progress: dict[str, dict] = {}
 
+# Matches the "Пропустить" boundary in app/scraping/scoring.py -- a tender
+# scored this far below the company's profile is exactly the noise this
+# product exists to remove, not something worth a row in the client's list.
+MIN_RELEVANT_MATCH_PERCENT = 40
+
 
 def get_refresh_progress(tenant_id: str) -> dict:
     return _progress.get(tenant_id, {"total": len(SOURCES), "done": 0, "sources": [], "running": False})
@@ -125,7 +130,12 @@ def refresh_tenant(tenant_id: str, client) -> dict:
     finally:
         _progress[tenant_id]["running"] = False
 
-    tenders = [t for r in results for t in r["tenders"] if t.get("title")]
+    tenders = [
+        t
+        for r in results
+        for t in r["tenders"]
+        if t.get("title") and _to_number(t.get("matchPercent")) >= MIN_RELEVANT_MATCH_PERCENT
+    ]
     sources_status = [
         {"name": r["name"], "status": r["status"], "count": len(r["tenders"])}
         for r in results

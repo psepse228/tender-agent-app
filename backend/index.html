@@ -26,13 +26,27 @@
   --green:    #22c55e;
   --yellow:   #f59e0b;
   --red:      #ef4444;
-  --border:   rgba(255,255,255,0.07);
+  --border:   rgba(255,255,255,0.1);
   --border-c: rgba(56,189,248,0.2);
   --grad:     linear-gradient(135deg, #38bdf8, #818cf8);
   --fd:       'Manrope', sans-serif;
   --fb:       'DM Sans', sans-serif;
   --r:        16px;
   --r-sm:     10px;
+  --tg-safe-top: 0px;
+
+  /* One glass recipe, reused by every panel-level surface (cards, sheet,
+     dropdown, tab bar, source rows, chat list) so the app reads as one
+     material rather than a patchwork of different blur/opacity values.
+     Small pills/badges/buttons deliberately stay flat, not glassed --
+     backdrop-filter on tiny repeated elements just muddies legibility. */
+  --glass:        rgba(10,14,24,0.55);
+  --glass-border: rgba(255,255,255,0.2);
+  --glass-border-soft: rgba(255,255,255,0.1);
+  --glass-sheen:  rgba(255,255,255,0.5);
+  --glass-blur:   blur(40px) saturate(165%);
+  --glass-blur-thin: blur(20px) saturate(150%);
+  --glass-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 24px 60px -32px rgba(0,0,0,.75);
 }
 
 html { -webkit-font-smoothing: antialiased; }
@@ -90,13 +104,13 @@ a { text-decoration: none; color: inherit; }
 
 /* ─── HEADER ─── */
 .header {
-  padding: 14px 16px 12px;
+  padding: calc(14px + var(--tg-safe-top)) 16px 12px;
   display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--glass-border-soft);
   position: sticky; top: 0; z-index: 50;
-  background: rgba(5,8,16,0.95);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur-thin);
+  -webkit-backdrop-filter: var(--glass-blur-thin);
 }
 .header::after {
   content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 1px;
@@ -148,11 +162,11 @@ a { text-decoration: none; color: inherit; }
 .account-menu-chevron { color: rgba(148,163,184,.5); font-size: 9px; }
 .account-menu-dropdown {
   position: absolute; top: calc(100% + 8px); right: 0; z-index: 60;
-  min-width: 200px; background: rgba(10,13,22,.82);
-  backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+  min-width: 200px; background: var(--glass);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border-c); border-radius: 14px;
   padding: 12px; display: none;
-  box-shadow: 0 12px 32px rgba(0,0,0,.4);
+  box-shadow: var(--glass-shadow);
 }
 .account-menu-dropdown.open { display: block; }
 .account-menu-dropdown-email {
@@ -184,11 +198,11 @@ a { text-decoration: none; color: inherit; }
 /* ─── BOTTOM NAV ─── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
-  background: rgba(5,8,16,0.97);
-  border-top: 1px solid var(--border);
+  background: var(--glass);
+  border-top: 1px solid var(--glass-border-soft);
   display: flex; gap: 8px;
   padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
-  z-index: 50; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  z-index: 50; backdrop-filter: var(--glass-blur-thin); -webkit-backdrop-filter: var(--glass-blur-thin);
 }
 .nav-btn {
   flex: 1; padding: 10px 8px;
@@ -224,18 +238,20 @@ a { text-decoration: none; color: inherit; }
 }
 .dash-stat {
   flex: 1; border-radius: 14px; padding: 14px 12px;
-  background: rgba(255,255,255,.045);
-  border: 1px solid rgba(255,255,255,.1);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
   position: relative; overflow: hidden;
 }
 .dash-stat::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent);
+  background: linear-gradient(90deg, transparent, var(--glass-sheen), transparent);
+  opacity: .5;
 }
 .dash-stat.accent {
-  background: linear-gradient(135deg, rgba(56,189,248,.1), rgba(129,140,248,.07));
-  border-color: rgba(56,189,248,.22);
+  background: linear-gradient(135deg, rgba(56,189,248,.18), var(--glass));
+  border-color: rgba(56,189,248,.35);
 }
 .dash-num {
   font-family: var(--fd); font-size: 28px; font-weight: 800;
@@ -273,9 +289,10 @@ a { text-decoration: none; color: inherit; }
 .cards { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 6px; }
 .card {
   border-radius: var(--r);
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.1);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
   padding: 10px 12px;
   cursor: pointer;
   transition: opacity .15s, transform .15s, border-color .2s;
@@ -284,19 +301,20 @@ a { text-decoration: none; color: inherit; }
 }
 .card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent);
+  background: linear-gradient(90deg, transparent, var(--glass-sheen), transparent);
+  opacity: .5;
 }
 .card.high {
-  background: linear-gradient(135deg, rgba(34,197,94,.06), rgba(34,197,94,.025));
-  border-color: rgba(34,197,94,.2);
+  background: linear-gradient(135deg, rgba(34,197,94,.16), var(--glass));
+  border-color: rgba(34,197,94,.4);
 }
 .card.mid {
-  background: linear-gradient(135deg, rgba(245,158,11,.06), rgba(245,158,11,.025));
-  border-color: rgba(245,158,11,.2);
+  background: linear-gradient(135deg, rgba(245,158,11,.16), var(--glass));
+  border-color: rgba(245,158,11,.4);
 }
 .card.low {
-  background: linear-gradient(135deg, rgba(239,68,68,.05), rgba(239,68,68,.015));
-  border-color: rgba(239,68,68,.16);
+  background: linear-gradient(135deg, rgba(239,68,68,.13), var(--glass));
+  border-color: rgba(239,68,68,.32);
 }
 .card:active { opacity: .82; transform: scale(.99); }
 @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -350,8 +368,9 @@ a { text-decoration: none; color: inherit; }
 /* ─── SOURCES ─── */
 .source-form { padding: 0 16px; }
 .source-item {
-  border-radius: var(--r); background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--r); background: var(--glass); border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
   padding: 13px 14px; display: flex; align-items: center; gap: 10px;
 }
 .source-item-info { flex: 1; min-width: 0; }
@@ -372,12 +391,13 @@ a { text-decoration: none; color: inherit; }
 .chat-list-item {
   display: flex; align-items: center; gap: 12px;
   padding: 11px 13px; border-radius: var(--r);
-  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: var(--glass); border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
   cursor: pointer; animation: fadeIn .28s ease both;
   transition: background .15s, transform .15s;
 }
-.chat-list-item:active { transform: scale(.98); background: rgba(255,255,255,.07); }
+.chat-list-item:active { transform: scale(.98); background: rgba(255,255,255,.1); }
 .chat-list-avatar {
   width: 42px; height: 42px; border-radius: 14px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
@@ -407,7 +427,9 @@ a { text-decoration: none; color: inherit; }
 .fav-detail-org { font-size: 12px; color: var(--silver); font-weight: 300; margin-bottom: 14px; }
 .detail-tabs {
   display: flex; gap: 6px; padding: 4px; margin: 0 16px 0;
-  background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 13px;
+  background: var(--glass); border: 1px solid var(--glass-border); border-radius: 13px;
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
 }
 .detail-tab {
   flex: 1; padding: 10px; border-radius: 10px; border: none; background: none;
@@ -449,8 +471,8 @@ a { text-decoration: none; color: inherit; }
 
 .sheet {
   position: fixed; bottom: 0; left: 0; right: 0;
-  background: rgba(10,13,22,.78);
-  backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid rgba(56,189,248,.18);
   border-bottom: none;
   border-radius: 24px 24px 0 0;
@@ -458,6 +480,7 @@ a { text-decoration: none; color: inherit; }
   transform: translateY(100%);
   transition: transform .32s cubic-bezier(.32,.72,0,1);
   max-height: 90vh; overflow-y: auto;
+  box-shadow: var(--glass-shadow);
 }
 .sheet::before {
   content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
@@ -498,10 +521,13 @@ a { text-decoration: none; color: inherit; }
   border-radius: 8px; padding: 4px 11px; font-weight: 300;
 }
 
-/* criteria grid */
+/* criteria grid -- nested inside the already-blurred sheet/detail pane, so
+   these deliberately skip their own backdrop-filter (stacking blur on
+   blur just muddies small text) but still use the shared glass border
+   language to read as part of the same material. */
 .sheet-criteria { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
 .criterion {
-  background: rgba(255,255,255,.03); border: 1px solid var(--border);
+  background: rgba(255,255,255,.05); border: 1px solid var(--glass-border-soft);
   border-radius: 13px; padding: 12px;
 }
 .criterion-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
@@ -513,9 +539,9 @@ a { text-decoration: none; color: inherit; }
 /* ai blocks */
 .sheet-sections { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
 .ai-block { border: 1px solid; border-radius: 13px; padding: 13px; }
-.ai-block.why  { border-color: rgba(34,197,94,.18);  background: rgba(34,197,94,.04); }
-.ai-block.risk { border-color: rgba(245,158,11,.18); background: rgba(245,158,11,.04); }
-.ai-block.plan { border-color: rgba(56,189,248,.18); background: rgba(56,189,248,.04); }
+.ai-block.why  { border-color: rgba(34,197,94,.25);  background: rgba(34,197,94,.07); }
+.ai-block.risk { border-color: rgba(245,158,11,.25); background: rgba(245,158,11,.07); }
+.ai-block.plan { border-color: rgba(56,189,248,.25); background: rgba(56,189,248,.07); }
 .ai-block-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .15em; margin-bottom: 7px; }
 .ai-block.why  .ai-block-label { color: var(--green); }
 .ai-block.risk .ai-block-label { color: var(--yellow); }
@@ -593,7 +619,7 @@ a { text-decoration: none; color: inherit; }
 
 .chat-bubble { max-width: 78%; padding: 11px 14px; border-radius: 16px; font-size: 13px; line-height: 1.6; }
 .chat-bubble.client { background: var(--grad); color: var(--bg); border-bottom-right-radius: 4px; font-weight: 500; }
-.chat-bubble.bot { background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--white); border-bottom-left-radius: 4px; }
+.chat-bubble.bot { background: rgba(255,255,255,.06); border: 1px solid var(--glass-border-soft); color: var(--white); border-bottom-left-radius: 4px; }
 .chat-bubble-text { white-space: pre-wrap; }
 .chat-bubble-time { font-size: 9px; margin-top: 4px; opacity: .55; text-align: right; }
 .chat-bubble.client .chat-bubble-time { color: var(--bg); }
@@ -605,7 +631,7 @@ a { text-decoration: none; color: inherit; }
 @keyframes typingPulse { 0%,60%,100%{opacity:.3} 30%{opacity:1} }
 .chat-input-row { display: flex; gap: 8px; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
 .chat-input {
-  flex: 1; background: rgba(255,255,255,.03); border: 1px solid var(--border);
+  flex: 1; background: rgba(255,255,255,.05); border: 1px solid var(--border);
   border-radius: 13px; padding: 12px 14px; color: var(--white); font-family: var(--fb);
   font-size: 13px; outline: none;
 }
@@ -717,7 +743,7 @@ a { text-decoration: none; color: inherit; }
 <!-- SCREEN: FAVORITES -->
 <div class="screen" id="screenFavorites">
   <div class="dashboard">
-    <div class="dash-eyebrow">Избранное</div>
+    <div class="dash-eyebrow">Ваш пакет</div>
   </div>
 
   <div class="filters-wrap">
@@ -738,7 +764,7 @@ a { text-decoration: none; color: inherit; }
     <div class="chat-header">
       <div class="chat-eyebrow">AI · Профиль компании</div>
       <div class="profile-title">Скаут AI</div>
-      <div class="profile-sub">Расскажи о компании — Скаут соберёт профиль для точного поиска тендеров</div>
+      <div class="profile-sub">Здесь вы настраиваете поиск тендеров: расскажите о компании, и Скаут AI составит профиль, по которому подбираются подходящие тендеры.</div>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
     <div class="chat-input-row">
@@ -802,16 +828,16 @@ a { text-decoration: none; color: inherit; }
     <div class="nav-btn-label">Тендеры</div>
   </button>
   <button class="nav-btn" id="navFavorites" onclick="switchScreen('favorites')">
-    <div class="nav-btn-icon">★</div>
-    <div class="nav-btn-label">Избранное</div>
-  </button>
-  <button class="nav-btn" id="navSources" onclick="switchScreen('sources')">
-    <div class="nav-btn-icon">🔗</div>
-    <div class="nav-btn-label">Источники</div>
+    <div class="nav-btn-icon">✦</div>
+    <div class="nav-btn-label">Ваш пакет</div>
   </button>
   <button class="nav-btn" id="navProfile" onclick="switchScreen('profile')">
     <div class="nav-btn-icon">◆</div>
     <div class="nav-btn-label">Скаут AI</div>
+  </button>
+  <button class="nav-btn" id="navSources" onclick="switchScreen('sources')">
+    <div class="nav-btn-icon">🔗</div>
+    <div class="nav-btn-label">Источники</div>
   </button>
 </div>
 
@@ -840,7 +866,28 @@ let allFavorites = [];
 let currentFilter = 'all';
 let currentFavoriteId = null;
 
-if (window.Telegram?.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
+if (window.Telegram?.WebApp) {
+  const tg = Telegram.WebApp;
+  tg.ready();
+  tg.expand();
+  // Main App mode renders fullscreen -- Telegram floats its own close/menu
+  // chrome and the OS status bar on top of our content instead of pushing
+  // it down, so without this our header sits right under (or behind) them.
+  // safeAreaInset covers the device notch/status bar, contentSafeAreaInset
+  // covers Telegram's own floating controls on top of that -- both are
+  // summed into one CSS var so the header can just pad around them.
+  const applySafeArea = () => {
+    const top = (tg.safeAreaInset?.top || 0) + (tg.contentSafeAreaInset?.top || 0);
+    document.documentElement.style.setProperty('--tg-safe-top', top + 'px');
+  };
+  applySafeArea();
+  tg.onEvent?.('safeAreaChanged', applySafeArea);
+  tg.onEvent?.('contentSafeAreaChanged', applySafeArea);
+  // Fullscreen Main App mode otherwise treats a downward swipe anywhere as
+  // "minimize/close the Mini App", which eats the bottom sheet's own
+  // swipe-to-dismiss gesture and closes the whole app instead of the sheet.
+  tg.disableVerticalSwipes?.();
+}
 
 function authHeaders() {
   // Google login (via the tender_agent_session cookie) is the only auth
@@ -915,6 +962,18 @@ async function chatErrorMessage(res) {
 
 function sc(v) { return v >= 70 ? 'high' : v >= 40 ? 'mid' : 'low'; }
 
+// Safety net for older rows / partial AI compliance -- the scoring prompt
+// now asks for DD.MM.YYYY directly, but this normalizes anything that
+// still comes back as an ISO or English-language date (e.g. "July 15, 2026").
+function formatDeadline(raw) {
+  if (!raw) return raw;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  if (iso) return iso[3] + '.' + iso[2] + '.' + iso[1];
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
+  return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+}
+
 function criterionColor(v) {
   if (v >= 70) return 'var(--green)';
   if (v >= 40) return 'var(--yellow)';
@@ -959,7 +1018,7 @@ function renderStatsHtml(t, isFavorite) {
     ((t.budget || t.deadline)
       ? '<div class="sheet-meta">' +
           (t.budget   ? '<span class="sheet-meta-tag">💰 ' + t.budget   + '</span>' : '') +
-          (t.deadline ? '<span class="sheet-meta-tag">📅 ' + t.deadline + '</span>' : '') +
+          (t.deadline ? '<span class="sheet-meta-tag">📅 ' + formatDeadline(t.deadline) + '</span>' : '') +
         '</div>'
       : '') +
 
@@ -1042,7 +1101,7 @@ function renderCards() {
           '<div class="card-tags">' +
             recTag(t.recommendation) +
             (t.budget   ? '<span class="tag tag-meta">' + t.budget + '</span>' : '') +
-            (t.deadline ? '<span class="tag tag-meta">до ' + t.deadline + '</span>' : '') +
+            (t.deadline ? '<span class="tag tag-meta">до ' + formatDeadline(t.deadline) + '</span>' : '') +
           '</div>' +
         '</div>' +
         '<button class="card-fav-btn" onclick="event.stopPropagation(); addToFavorite(\'' + t.id + '\', this)" title="Добавить в Tender AI">+ AI</button>' +
@@ -1100,7 +1159,7 @@ async function loadFavorites() {
     allFavorites = Array.isArray(raw) ? raw.map(normalizeTender) : [];
     renderFavoriteCards();
   } catch (e) {
-    showToast('Ошибка загрузки избранного');
+    showToast('Ошибка загрузки пакета');
   }
 }
 
