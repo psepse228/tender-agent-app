@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 
-from app.routers import auth_google, favorites, health, profile, profile_chat, refresh, tenders
+from app.routers import auth_google, favorites, health, legal, profile, profile_chat, refresh, tenders
 
 app = FastAPI(title="Tender Agent Backend")
 app.include_router(health.router)
@@ -13,6 +13,19 @@ app.include_router(profile.router)
 app.include_router(profile_chat.router)
 app.include_router(auth_google.router)
 app.include_router(favorites.router)
+app.include_router(legal.router)
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Deliberately no X-Frame-Options / frame-ancestors -- this app is a
+    # Telegram Mini App and MUST be embeddable inside Telegram's own webview
+    # iframe. Adding clickjacking protection here would break the product's
+    # primary distribution channel.
+    return response
 
 INDEX_HTML_PATH = Path(__file__).resolve().parent.parent / "index.html"
 

@@ -47,6 +47,8 @@ LOGIN_PAGE_HTML = """<!DOCTYPE html>
     background: #f1f5f9; color: #050810; font-weight: 700; font-size: 14px;
     padding: 12px 22px; border-radius: 12px; margin-top: 8px;
   }
+  .legal-links { margin-top: 28px; font-size: 11px; color: #64748b; }
+  .legal-links a { color: #64748b; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -55,6 +57,9 @@ LOGIN_PAGE_HTML = """<!DOCTYPE html>
   <p>Войдите, чтобы открыть панель тендеров</p>
   {error_html}
   <a class="google-btn" href="/api/auth/google/start">Войти через Google</a>
+  <div class="legal-links">
+    <a href="/terms">Условия использования</a> · <a href="/privacy">Конфиденциальность</a>
+  </div>
 </body>
 </html>"""
 

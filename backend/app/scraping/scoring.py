@@ -42,7 +42,9 @@ Each tender object:
   "profitPotential": "Низкий" | "Средний" | "Высокий"
 }}
 
-Extract up to 10 most relevant tenders. If no tenders found return {{ "tenders": [] }}."""
+Extract up to 30 most relevant tenders -- a listing page routinely shows more
+than 10 real tenders, and a low cap was silently discarding tenders that were
+already scraped and available. If no tenders found return {{ "tenders": [] }}."""
 
 
 def extract_and_score(content: str, source: dict, profile_text: str, client=None) -> list[dict]:
@@ -62,7 +64,10 @@ def extract_and_score(content: str, source: dict, profile_text: str, client=None
                 "content": f"Platform: {source['name']}\nURL: {source['url']}\n\nContent:\n{truncated}",
             },
         ],
-        max_tokens=3000,
+        # Raised alongside the 10->30 tender cap above -- 3000 tokens wasn't
+        # enough headroom for 30 fully-detailed tender objects and risked
+        # truncating the JSON mid-response.
+        max_tokens=8000,
         temperature=0.1,
     )
 
