@@ -917,6 +917,7 @@ function switchScreen(name) {
   if (name === 'tenders') {
     document.getElementById('screenTenders').classList.add('active');
     document.getElementById('navTenders').classList.add('active');
+    renderCards(); // re-render so "+ AI" reflects any pakет changes made elsewhere
   } else if (name === 'favorites') {
     document.getElementById('screenFavorites').classList.add('active');
     document.getElementById('navFavorites').classList.add('active');
@@ -1092,6 +1093,7 @@ function renderCards() {
   container.innerHTML = f.map((t, i) => {
     const pct = t.matchPercent || 0;
     const s   = sc(pct);
+    const fav = findFavoriteFor(t);
     return '<div class="card ' + s + '" style="animation-delay:' + (i * 0.04) + 's" onclick="openSheet(allTenders[' + allTenders.indexOf(t) + '])">' +
       '<div class="card-top">' +
         '<div class="card-score-pill ' + s + '">' + pct + '</div>' +
@@ -1104,12 +1106,21 @@ function renderCards() {
             (t.deadline ? '<span class="tag tag-meta">до ' + formatDeadline(t.deadline) + '</span>' : '') +
           '</div>' +
         '</div>' +
-        '<button class="card-fav-btn" onclick="event.stopPropagation(); addToFavorite(\'' + t.id + '\', this)" title="Добавить в Tender AI">+ AI</button>' +
+        '<button class="card-fav-btn' + (fav ? ' active' : '') + '" onclick="event.stopPropagation(); toggleFavorite(\'' + t.id + '\', this)"' +
+          (fav ? ' data-favorite-id="' + fav.id + '"' : '') +
+          ' title="' + (fav ? 'Убрать из Tender AI' : 'Добавить в Tender AI') + '">' + (fav ? '✓ AI' : '+ AI') + '</button>' +
         '<div class="card-chevron">›</div>' +
       '</div>' +
       '<div class="card-bar"><div class="card-bar-fill" style="width:' + pct + '%"></div></div>' +
     '</div>';
   }).join('');
+}
+
+// A tender's own id is fresh every refresh (see backend/app/scraping/pipeline.py),
+// so title+organization is the only stable way to recognize "this tender is
+// already in Ваш пакет" -- matches the backend's own dedup key in favorites.py.
+function findFavoriteFor(t) {
+  return allFavorites.find(f => f.title === t.title && f.organization === t.organization);
 }
 
 function updateStats(tenders) {
@@ -1122,6 +1133,17 @@ function updateStats(tenders) {
 }
 
 // ── FAVORITES ──
+// The card's "+ AI" button is a toggle: dataset.favoriteId (also set up
+// front by findFavoriteFor when a card renders as already-added) is what
+// tells us which direction to go.
+async function toggleFavorite(tenderId, buttonEl) {
+  if (buttonEl.dataset.favoriteId) {
+    await removeFavoriteQuick(buttonEl.dataset.favoriteId, buttonEl);
+  } else {
+    await addToFavorite(tenderId, buttonEl);
+  }
+}
+
 async function addToFavorite(tenderId, buttonEl) {
   try {
     const res = await fetch(FAVORITES_URL, {
@@ -1131,10 +1153,34 @@ async function addToFavorite(tenderId, buttonEl) {
     });
     if (!res.ok) { showToast('Не удалось добавить в Tender AI'); return; }
     const data = await res.json();
-    if (buttonEl) { buttonEl.textContent = '✓ AI'; buttonEl.classList.add('active'); }
+    if (buttonEl) {
+      buttonEl.textContent = '✓ AI';
+      buttonEl.classList.add('active');
+      buttonEl.dataset.favoriteId = data.favorite_id;
+      buttonEl.title = 'Убрать из Tender AI';
+    }
     showToast(data.already_existed ? 'Уже добавлено в Tender AI' : 'Добавлено в Tender AI');
   } catch (e) {
     showToast('Не удалось добавить в Tender AI');
+  }
+}
+
+// Quick remove from a Тендеры card's toggle button -- unlike removeFavorite()
+// this never navigates anywhere, it just flips the button back to "+ AI".
+async function removeFavoriteQuick(favoriteId, buttonEl) {
+  try {
+    const res = await fetch(FAVORITES_URL + '/' + favoriteId, { method: 'DELETE', headers: authHeaders() });
+    if (!res.ok) { showToast('Не удалось убрать из Tender AI'); return; }
+    allFavorites = allFavorites.filter(f => f.id !== favoriteId);
+    if (buttonEl) {
+      buttonEl.textContent = '+ AI';
+      buttonEl.classList.remove('active');
+      delete buttonEl.dataset.favoriteId;
+      buttonEl.title = 'Добавить в Tender AI';
+    }
+    showToast('Убрано из Tender AI');
+  } catch (e) {
+    showToast('Не удалось убрать из Tender AI');
   }
 }
 
@@ -1217,6 +1263,12 @@ function setFavDetailTab(tab) {
   document.getElementById('favTabChat').classList.toggle('active', tab === 'chat');
   document.getElementById('favPaneStats').classList.toggle('active', tab === 'stats');
   document.getElementById('favPaneChat').classList.toggle('active', tab === 'chat');
+  if (tab === 'chat') {
+    // The pane was display:none while history loaded (stats is the default
+    // tab), so any scroll attempted back then landed on a zero-height
+    // container and did nothing -- redo it now that it's actually visible.
+    scrollChatToBottom(document.getElementById('favChatMessages'));
+  }
 }
 
 // ── SOURCES ──
@@ -1451,7 +1503,17 @@ function renderChatMessage(role, content, timestamp, containerId = 'chatMessages
 
   row.appendChild(bubble);
   container.appendChild(row);
+  scrollChatToBottom(container);
+}
+
+// .chat-messages is only a real internal scroll region when its flex parent
+// is height-bounded; on some screens the parent instead just grows to fit
+// content and the PAGE is what scrolls -- so scroll both the container and
+// the page's own scrolling element, whichever one actually has overflow
+// silently no-ops.
+function scrollChatToBottom(container) {
   container.scrollTop = container.scrollHeight;
+  document.scrollingElement.scrollTop = document.scrollingElement.scrollHeight;
 }
 
 function showTypingIndicator(containerId = 'chatMessages', indicatorId = 'typingIndicator') {
@@ -1471,7 +1533,7 @@ function showTypingIndicator(containerId = 'chatMessages', indicatorId = 'typing
   row.appendChild(bubble);
 
   container.appendChild(row);
-  container.scrollTop = container.scrollHeight;
+  scrollChatToBottom(container);
 }
 
 function hideTypingIndicator(indicatorId = 'typingIndicator') {
@@ -1715,6 +1777,11 @@ async function completeDeepLinkLoginIfNeeded() {
   await completeDeepLinkLoginIfNeeded();
   loadAccountMenu();
   maybeShowTelegramLinkPrompt();
+  // Awaited before loadTenders() so the very first card render already
+  // knows which tenders are in Ваш пакет (findFavoriteFor needs allFavorites
+  // populated), instead of the "+ AI" buttons starting wrong and only
+  // fixing themselves after a later re-render.
+  await loadFavorites();
   loadTenders();
 })();
 </script>
