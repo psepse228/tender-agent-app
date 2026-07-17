@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_tenant_id
 from app.chat.profile_chat import generate_reply
+from app.chat.rate_limit import enforce_chat_rate_limit
 from app.db import get_supabase_client
 
 router = APIRouter()
@@ -34,6 +35,7 @@ def send_chat_message(
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     client = get_supabase_client()
+    enforce_chat_rate_limit("profile_chat_messages", tenant_id, {}, client)
 
     client.table("profile_chat_messages").insert(
         {"tenant_id": tenant_id, "role": "client", "content": message}

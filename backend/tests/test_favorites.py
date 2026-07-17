@@ -18,6 +18,7 @@ class _FakeTable:
         self.name = name
         self.store = store
         self._filters = {}
+        self._gte_filters = {}
         self._pending = None
 
     def select(self, *_a, **_k):
@@ -25,6 +26,10 @@ class _FakeTable:
 
     def eq(self, column, value):
         self._filters[column] = value
+        return self
+
+    def gte(self, column, value):
+        self._gte_filters[column] = value
         return self
 
     def limit(self, *_a, **_k):
@@ -59,7 +64,10 @@ class _FakeTable:
                 return SimpleNamespace(data=None)
 
         rows = [
-            r for r in self.store.get(self.name, []) if all(r.get(k) == v for k, v in self._filters.items())
+            r
+            for r in self.store.get(self.name, [])
+            if all(r.get(k) == v for k, v in self._filters.items())
+            and all(r.get(k, "") >= v for k, v in self._gte_filters.items())
         ]
         return SimpleNamespace(data=rows)
 

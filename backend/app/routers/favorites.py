@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_tenant_id
 from app.chat.favorite_chat import generate_reply
+from app.chat.rate_limit import enforce_chat_rate_limit
 from app.db import get_supabase_client
 
 router = APIRouter()
@@ -136,6 +137,7 @@ def send_favorite_chat_message(
 
     client = get_supabase_client()
     tender = _get_owned_favorite(favorite_id, tenant_id, client)
+    enforce_chat_rate_limit("favorite_chat_messages", tenant_id, {"favorite_id": favorite_id}, client)
 
     client.table("favorite_chat_messages").insert(
         {"favorite_id": favorite_id, "tenant_id": tenant_id, "role": "client", "content": message}

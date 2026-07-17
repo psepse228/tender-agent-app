@@ -18,7 +18,9 @@ class _FakeTable:
         self.name = name
         self.store = store
         self._filters = {}
+        self._gte_filters = {}
         self._order_by = None
+        self._order_desc = False
         self._pending = None
 
     def select(self, *_a, **_k):
@@ -28,8 +30,13 @@ class _FakeTable:
         self._filters[column] = value
         return self
 
-    def order(self, column, *_a, **_k):
+    def gte(self, column, value):
+        self._gte_filters[column] = value
+        return self
+
+    def order(self, column, *_a, desc=False, **_k):
         self._order_by = column
+        self._order_desc = desc
         return self
 
     def limit(self, *_a, **_k):
@@ -67,9 +74,10 @@ class _FakeTable:
             r
             for r in self.store.get(self.name, [])
             if all(r.get(k) == v for k, v in self._filters.items())
+            and all(r.get(k, "") >= v for k, v in self._gte_filters.items())
         ]
         if self._order_by:
-            rows = sorted(rows, key=lambda r: r.get(self._order_by, ""))
+            rows = sorted(rows, key=lambda r: r.get(self._order_by, ""), reverse=self._order_desc)
         return SimpleNamespace(data=rows)
 
 
