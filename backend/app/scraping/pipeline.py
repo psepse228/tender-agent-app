@@ -19,6 +19,7 @@ SOURCES = [
     },
     {"name": "BicoTender", "url": "https://bicotender.ru"},
     {"name": "Uztender", "url": "https://uztender.com"},
+    {"name": "UNGM", "url": "https://www.ungm.org/Public/Notice"},
 ]
 
 # In-memory per-tenant progress for the currently-running (or most recently
