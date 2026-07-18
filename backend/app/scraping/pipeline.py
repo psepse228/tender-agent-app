@@ -18,6 +18,7 @@ SOURCES = [
         "url": "https://projects.worldbank.org/en/projects-operations/procurement",
     },
     {"name": "BicoTender", "url": "https://bicotender.ru"},
+    {"name": "Uztender", "url": "https://uztender.com"},
 ]
 
 # In-memory per-tenant progress for the currently-running (or most recently

@@ -161,7 +161,7 @@ def test_reports_per_source_status(monkeypatch):
     statuses = {s["name"]: s["status"] for s in result["sources_status"]}
     assert statuses["BicoTender"] == "failed"
     assert statuses["eTender UzEx"] == "ok"
-    assert len(result["sources_status"]) == 6
+    assert len(result["sources_status"]) == 7
 
 
 def test_process_source_marks_failed_when_scrape_returns_none(monkeypatch):
@@ -360,7 +360,7 @@ def test_notification_failure_does_not_break_the_refresh(monkeypatch):
 def test_reports_no_progress_before_any_refresh_has_run():
     progress = get_refresh_progress("never-refreshed-tenant")
 
-    assert progress == {"total": 6, "done": 0, "sources": [], "running": False}
+    assert progress == {"total": 7, "done": 0, "sources": [], "running": False}
 
 
 def test_progress_reaches_all_sources_done_and_not_running_after_refresh(monkeypatch):
@@ -373,7 +373,7 @@ def test_progress_reaches_all_sources_done_and_not_running_after_refresh(monkeyp
     refresh_tenant(TENANT_ID, _FakeClient(store))
 
     progress = get_refresh_progress(TENANT_ID)
-    assert progress["done"] == 6
-    assert progress["total"] == 6
+    assert progress["done"] == 7
+    assert progress["total"] == 7
     assert progress["running"] is False
     assert {s["name"] for s in progress["sources"]} == {s["name"] for s in pipeline.SOURCES}
