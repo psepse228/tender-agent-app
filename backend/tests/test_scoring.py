@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.scraping.scoring import CONTENT_CHAR_LIMIT, extract_and_score
+from app.scraping.scoring import CONTENT_CHAR_LIMIT, SYSTEM_PROMPT_TEMPLATE, extract_and_score
 
 SOURCE = {"name": "eTender UzEx", "url": "https://etender.uzex.uz"}
 
@@ -135,6 +135,14 @@ def test_recomputed_score_below_40_is_skip_recommendation():
 
     assert result[0]["matchPercent"] == 10
     assert result[0]["recommendation"] == "Пропустить"
+
+
+def test_prompt_forbids_expand_competencies_reasoning_for_domain_mismatch():
+    # Regression guard: the model was scoring a pure IT-systems tender as 50%
+    # compliant for an events/MICE company, justified as "a chance to expand
+    # into IT competencies." The prompt must explicitly forbid that framing.
+    assert "defeats the purpose of a relevance filter" in SYSTEM_PROMPT_TEMPLATE
+    assert "0-15" in SYSTEM_PROMPT_TEMPLATE
 
 
 def test_propagates_error_on_malformed_json_response():

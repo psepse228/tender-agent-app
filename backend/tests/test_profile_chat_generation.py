@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.chat.profile_chat import MAX_HISTORY_MESSAGES, generate_reply
+from app.chat.profile_chat import MAX_HISTORY_MESSAGES, SYSTEM_PROMPT_TEMPLATE, generate_reply
 
 
 class _FakeOpenAI:
@@ -62,6 +62,14 @@ def test_includes_current_profile_text_in_system_prompt():
 
     system_message = fake_client.last_kwargs["messages"][0]["content"]
     assert "We build roads." in system_message
+
+
+def test_prompt_redirects_tender_list_requests_to_tenders_tab():
+    # Regression guard: this bot told a client asking "show me the tenders you
+    # found" to go manually search the platforms herself, instead of pointing
+    # to the already-scraped, already-scored Тендеры tab.
+    assert "Тендеры" in SYSTEM_PROMPT_TEMPLATE
+    assert "no live access to tender platforms" in SYSTEM_PROMPT_TEMPLATE
 
 
 def test_propagates_error_on_malformed_json_response():

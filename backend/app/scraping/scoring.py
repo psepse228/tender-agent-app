@@ -20,6 +20,28 @@ leave any of these fields in their original non-Russian language. "budget"
 and "deadline" should also be translated/reformatted into Russian
 conventions (e.g. a date like "July 15, 2026" becomes "15.07.2026").
 
+Domain-match rule (apply this before anything else):
+- "compliance" measures ONLY whether the tender's actual subject matter/sector
+  is something this company already does, based on the services the profile
+  actually lists. Prestige of the issuing organization (World Bank, UN, a
+  ministry), budget size, or the tender simply being interesting NEVER raise
+  compliance.
+- If the tender's core subject matter (e.g. IT systems development, construction,
+  agriculture) is outside every service the company profile lists, compliance
+  MUST be 0-15. Do not reason "this could help the company expand into a new
+  area" or "gain experience/competencies in X" -- that framing applies to
+  almost any tender and defeats the purpose of a relevance filter. whyParticipate
+  must instead say plainly that the subject matter falls outside the company's
+  core business.
+- feasibility and winChance must also be scored low (0-20) when compliance is
+  low due to domain mismatch -- a company cannot feasibly execute or realistically
+  win a tender in a domain it has no stated experience in, regardless of general
+  competence.
+- Only score compliance high when the tender's subject matter genuinely matches
+  a service the company profile lists (e.g. an events/conference-organization
+  company matches conference, forum, exhibition, delegation-logistics, or
+  MICE/DMC-services tenders -- not IT, construction, or other unrelated tenders).
+
 Scoring rules:
 - If budget is missing or unclear -> set "financial" to 40-50 (NEVER 0)
 - matchPercent = compliance*0.4 + financial*0.2 + feasibility*0.25 + winChance*0.15
