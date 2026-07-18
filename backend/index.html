@@ -492,6 +492,15 @@ a { text-decoration: none; color: inherit; }
   background: rgba(255,255,255,.1); border-radius: 2px;
   margin: 14px auto 0;
 }
+.sheet-close-btn {
+  position: absolute; top: 14px; right: 14px; z-index: 1;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur-thin); -webkit-backdrop-filter: var(--glass-blur-thin);
+  color: rgba(148,163,184,.8); font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.sheet-close-btn:active { transform: scale(.9); }
 .sheet-body { padding: 20px 18px 48px; }
 
 /* Sheet score row — glass pill */
@@ -845,6 +854,7 @@ a { text-decoration: none; color: inherit; }
 <div class="sheet-overlay" id="overlay" onclick="closeSheet()"></div>
 <div class="sheet" id="sheet">
   <div class="sheet-handle"></div>
+  <button class="sheet-close-btn" onclick="closeSheet()" title="Закрыть" aria-label="Закрыть">✕</button>
   <div class="sheet-body" id="sheetBody"></div>
 </div>
 
@@ -1506,14 +1516,14 @@ function renderChatMessage(role, content, timestamp, containerId = 'chatMessages
   scrollChatToBottom(container);
 }
 
-// .chat-messages is only a real internal scroll region when its flex parent
-// is height-bounded; on some screens the parent instead just grows to fit
-// content and the PAGE is what scrolls -- so scroll both the container and
-// the page's own scrolling element, whichever one actually has overflow
-// silently no-ops.
+// Scoped strictly to the chat container itself -- scrolling the whole page
+// here was wrong, it also fired while loadFavoriteChatHistory() populates
+// the Tender AI pane in the background (behind the default Статистика tab),
+// dragging the visible stats view down with it. setFavDetailTab('chat')
+// re-runs this once the chat pane is actually visible, which is the only
+// place a page-level correction was ever really needed.
 function scrollChatToBottom(container) {
   container.scrollTop = container.scrollHeight;
-  document.scrollingElement.scrollTop = document.scrollingElement.scrollHeight;
 }
 
 function showTypingIndicator(containerId = 'chatMessages', indicatorId = 'typingIndicator') {
