@@ -678,11 +678,32 @@ a { text-decoration: none; color: inherit; }
   box-shadow: 0 8px 28px rgba(0,0,0,.45);
 }
 .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* ─── SUSPENDED-SUBSCRIPTION OVERLAY (v1 billing, manually managed) ─── */
+.suspended-overlay {
+  position: fixed; inset: 0; z-index: 999; display: none;
+  background: rgba(5,8,16,.96); backdrop-filter: blur(6px);
+  align-items: center; justify-content: center; padding: 24px; text-align: center;
+}
+.suspended-overlay.show { display: flex; }
+.suspended-card { max-width: 320px; }
+.suspended-icon { font-size: 32px; margin-bottom: 14px; }
+.suspended-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+.suspended-text { font-size: 13px; color: rgba(148,163,184,.75); line-height: 1.6; }
 </style>
 </head>
 <body>
 
 <div class="ambient"></div>
+
+<!-- SUSPENDED SUBSCRIPTION OVERLAY -->
+<div class="suspended-overlay" id="suspendedOverlay">
+  <div class="suspended-card">
+    <div class="suspended-icon">⏸</div>
+    <div class="suspended-title">Подписка приостановлена</div>
+    <div class="suspended-text">Свяжитесь с нами, чтобы возобновить доступ к Tender Agent.</div>
+  </div>
+</div>
 
 <!-- LOADER -->
 <div id="loader">
@@ -1737,6 +1758,19 @@ async function sendFavoriteChatMessage() {
   }
 }
 
+// ── SUBSCRIPTION STATUS (v1 billing -- no payment processor, manually
+// managed by the owner via subscription_status in Supabase) ──
+async function checkSubscriptionStatus() {
+  try {
+    const res = await fetch('/api/stats', { headers: authHeaders() });
+    if (!res.ok) return; // fail open -- a stats-endpoint hiccup should never look like a real suspension
+    const data = await res.json();
+    if (data.subscriptionStatus === 'suspended') {
+      document.getElementById('suspendedOverlay').classList.add('show');
+    }
+  } catch (e) { /* fail open, same reasoning as above */ }
+}
+
 // ── ACCOUNT MENU ──
 async function loadAccountMenu() {
   try {
@@ -1843,6 +1877,7 @@ async function completeDeepLinkLoginIfNeeded() {
 (async () => {
   await completeDeepLinkLoginIfNeeded();
   loadAccountMenu();
+  checkSubscriptionStatus();
   maybeShowTelegramLinkPrompt();
   // Awaited before loadTenders() so the very first card render already
   // knows which tenders are in Ваш пакет (findFavoriteFor needs allFavorites

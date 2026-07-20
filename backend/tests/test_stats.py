@@ -63,7 +63,9 @@ def test_returns_aggregate_counts_scoped_to_the_callers_tenant(monkeypatch):
                 {"id": "m2", "tenant_id": TENANT_ID},
             ],
             "favorite_chat_messages": [{"id": "m3", "tenant_id": TENANT_ID}],
-            "tenants": [{"id": TENANT_ID, "last_refresh_at": "2026-07-19T10:00:00Z"}],
+            "tenants": [
+                {"id": TENANT_ID, "last_refresh_at": "2026-07-19T10:00:00Z", "subscription_status": "active"}
+            ],
         }
     )
     monkeypatch.setattr("app.routers.stats.get_supabase_client", lambda: fake_client)
@@ -78,7 +80,24 @@ def test_returns_aggregate_counts_scoped_to_the_callers_tenant(monkeypatch):
         "favoritesSaved": 1,
         "chatMessages": 3,
         "lastRefreshAt": "2026-07-19T10:00:00Z",
+        "subscriptionStatus": "active",
     }
+
+
+def test_reports_suspended_subscription_status(monkeypatch):
+    fake_client = _FakeClient(
+        {
+            "tenants": [
+                {"id": TENANT_ID, "last_refresh_at": None, "subscription_status": "suspended"}
+            ],
+        }
+    )
+    monkeypatch.setattr("app.routers.stats.get_supabase_client", lambda: fake_client)
+
+    response = client.get("/api/stats", cookies=_auth_cookie(TENANT_ID))
+
+    assert response.status_code == 200
+    assert response.json()["subscriptionStatus"] == "suspended"
 
 
 def test_requires_auth():

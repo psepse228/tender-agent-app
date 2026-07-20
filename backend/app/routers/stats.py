@@ -28,9 +28,20 @@ def get_stats(tenant_id: str = Depends(get_current_tenant_id)) -> dict:
     favorite_chat_messages = _count(client, "favorite_chat_messages", tenant_id)
 
     tenant_row = (
-        client.table("tenants").select("last_refresh_at").eq("id", tenant_id).limit(1).execute().data
+        client.table("tenants")
+        .select("last_refresh_at,subscription_status")
+        .eq("id", tenant_id)
+        .limit(1)
+        .execute()
+        .data
     )
     last_refresh_at = tenant_row[0]["last_refresh_at"] if tenant_row else None
+    # v1 billing has no payment processor -- this is a manually-managed lever
+    # (the owner flips it after chasing an unpaid invoice), surfaced here so
+    # the frontend can show a blocking notice. Fails open to "active" if the
+    # row lookup comes back empty, same reasoning as last_refresh_at above:
+    # a lookup hiccup should never look identical to a real suspension.
+    subscription_status = tenant_row[0].get("subscription_status", "active") if tenant_row else "active"
 
     return {
         "tendersScored": tenders_scored,
@@ -39,4 +50,5 @@ def get_stats(tenant_id: str = Depends(get_current_tenant_id)) -> dict:
         "favoritesSaved": favorites_saved,
         "chatMessages": profile_chat_messages + favorite_chat_messages,
         "lastRefreshAt": last_refresh_at,
+        "subscriptionStatus": subscription_status,
     }

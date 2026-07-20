@@ -17,7 +17,12 @@ def get_current_tenant_id(
     lets a team share one Google account/tenant, which a per-person
     Telegram identity couldn't. (A separate, explicit "connect Telegram"
     step -- see /api/link-telegram -- lets an already-authenticated tenant
-    additionally receive Telegram alerts; it is not a login path.)"""
+    additionally receive Telegram alerts; it is not a login path.)
+
+    Deliberately does NOT check subscription/billing status -- see
+    app/routers/stats.py for why that's a client-side gate for v1, not a
+    DB call added to this dependency (which every protected endpoint
+    depends on)."""
     if session_cookie is None:
         raise HTTPException(status_code=401, detail="not authenticated")
 
