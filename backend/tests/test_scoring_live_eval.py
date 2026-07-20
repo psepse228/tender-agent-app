@@ -37,6 +37,24 @@ integration with existing government platforms. Requires demonstrated prior
 experience delivering IT systems / software development projects."""
 
 
+def test_scoring_reliably_extracts_a_clear_mismatch_across_repeated_calls():
+    """Regression guard for a real flaky bug found this session: adding more
+    scoring-methodology instructions to the prompt made the model omit an
+    obviously-mismatched tender from the output entirely (empty tenders
+    list) on roughly half of otherwise-identical calls, instead of
+    extracting it with honestly low scores every time. A single-shot live
+    eval can't catch a ~50% flaky failure -- this repeats the call several
+    times and requires every single one to return the tender."""
+    for _ in range(5):
+        tenders = extract_and_score(
+            IT_SYSTEM_TENDER_CONTENT,
+            {"name": "World Bank", "url": "https://worldbank.org"},
+            EVENT_COMPANY_PROFILE,
+        )
+        assert tenders, "a clearly mismatched tender must never be silently omitted from the output"
+        assert tenders[0]["compliance"] <= 20
+
+
 def test_scoring_rejects_it_tender_for_event_management_company():
     """Reproduces the exact screenshot bug: an events/MICE company was scored
     50% compliant on a pure IT-systems-development World Bank tender, justified

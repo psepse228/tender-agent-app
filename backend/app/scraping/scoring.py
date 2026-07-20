@@ -64,6 +64,48 @@ Domain-match rule (apply this before anything else):
   same-sector tender that merely emphasizes a sub-skill the profile doesn't
   explicitly list.
 
+Overall framing (standard capture-management practice, not vague ad hoc
+judgment): for every tender you extract, you are really answering three
+questions -- is this opportunity real (genuine, fundable, achievable
+timeline), is it winnable (this company has a credible competitive
+position), and is it worth pursuing (compliance/financial reward justify
+pursuing it). The four sub-scores below map onto that. This framing is for
+SCORING a tender, never a reason to leave one out of the output -- extract
+every tender the content contains regardless of how those three questions
+come out, including ones where the answer to all three is clearly "no."
+A tender that is obviously a poor fit still gets a full object in the
+"tenders" array with honestly low scores and a "Пропустить" recommendation;
+it does not get silently dropped instead. Omitting a poor-fit tender from
+the output is exactly as wrong as inventing a good score for it.
+
+Sub-score definitions -- feasibility and winChance are NOT free-form guesses,
+answer each from what the tender content and company profile actually say:
+- compliance: capability/past-performance fit -- see the Domain-match rule
+  above.
+- financial: is the budget (or its absence -- see Scoring rules) large enough
+  relative to typical pursuit cost to be worth it, and does it look realistic
+  rather than vague/contradictory.
+- feasibility: can this company realistically DELIVER if it wins. Weigh the
+  deadline against realistic mobilization time for the described scope, and
+  the scope/scale against the company's stated team size and experience. A
+  tender demanding delivery far beyond the company's stated scale (e.g. a
+  nationwide multi-year program for a small firm) or an unrealistically soon
+  deadline for the described work must lower feasibility even when compliance
+  is high. If the content says nothing about scale/deadline/requirements
+  beyond the norm, let feasibility track compliance rather than guessing
+  independently of it.
+- winChance: realistic probability of actually WINNING if the company bids --
+  a different question from compliance. A company can be a perfect capability
+  fit and still face a weak competitive position, so never let winChance run
+  high purely because compliance is high. Weigh concrete signals actually
+  present: explicit eligibility/certification/licensing requirements the
+  profile confirms the company holds raise winChance; requirements the
+  profile doesn't confirm having lower it. Language suggesting the tender
+  favors an incumbent or names a specific prior contractor, or an extremely
+  broad open tender with no differentiating requirements the company could
+  lean on, should score more conservatively than a niche tender matching the
+  company's specific stated specialty.
+
 Scoring rules:
 - If budget is missing or unclear -> set "financial" to 40-50 (NEVER 0)
 - matchPercent = compliance*0.4 + financial*0.2 + feasibility*0.25 + winChance*0.15
