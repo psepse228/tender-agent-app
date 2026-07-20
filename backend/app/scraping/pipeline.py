@@ -8,6 +8,16 @@ from app.scraping.scoring import extract_and_score
 
 logger = logging.getLogger(__name__)
 
+# The OpenAI org this runs under has a 30,000 TPM cap on gpt-4o (a real,
+# observed production limit, not a guess -- confirmed via Railway logs
+# showing sources failing with 429 "tokens per min" mid-refresh). Each
+# source's scoring call can burn several thousand tokens on its own; running
+# all ~7 sources fully concurrently reliably blew through that cap and
+# silently dropped whichever sources lost the race, even though the overall
+# refresh still reported success. A small worker cap serializes enough of
+# the load to stay under the limit in practice.
+MAX_CONCURRENT_SOURCES = 2
+
 SOURCES = [
     {"name": "eTender UzEx", "url": "https://etender.uzex.uz"},
     {"name": "XT-Xarid", "url": "https://xt-xarid.uz"},
@@ -118,7 +128,7 @@ def refresh_tenant(tenant_id: str, client) -> dict:
 
     results = []
     try:
-        with ThreadPoolExecutor(max_workers=len(sources)) as pool:
+        with ThreadPoolExecutor(max_workers=min(MAX_CONCURRENT_SOURCES, len(sources))) as pool:
             futures = {
                 pool.submit(_process_source, source, profile_text): source for source in sources
             }
