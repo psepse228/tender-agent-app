@@ -12,6 +12,7 @@ from app.routers import (
     profile_chat,
     refresh,
     sources,
+    stats,
     telegram_link,
     tenders,
 )
@@ -26,6 +27,7 @@ app.include_router(auth_google.router)
 app.include_router(favorites.router)
 app.include_router(legal.router)
 app.include_router(sources.router)
+app.include_router(stats.router)
 app.include_router(telegram_link.router)
 
 
