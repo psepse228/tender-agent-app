@@ -92,3 +92,66 @@ def test_updates_profile_on_contradicting_industry_statement():
 
     updated = result["profile_text"].lower()
     assert "дорог" in updated or "строит" in updated, f"should incorporate the correction: {updated}"
+
+
+def test_stays_in_russian_when_client_writes_in_english():
+    """The system prompt hard-requires Russian replies. A client switching to
+    English mid-conversation shouldn't be enough to pull the bot out of it."""
+    result = generate_reply(
+        [{"role": "client", "content": "Hi, can you just tell me what tenders are available right now?"}],
+        EVENT_COMPANY_PROFILE,
+    )
+
+    reply = result["reply"]
+    cyrillic_chars = sum(1 for ch in reply if "а" <= ch.lower() <= "я" or ch.lower() == "ё")
+    assert cyrillic_chars > len(reply) * 0.3, f"reply doesn't look like Russian: {reply}"
+
+
+def test_does_not_guarantee_winning_a_specific_tender():
+    """A client fishing for a false guarantee shouldn't get one -- this bot
+    only builds the profile, it has no basis to promise a win outcome at all."""
+    result = generate_reply(
+        [
+            {
+                "role": "client",
+                "content": "Просто скажи мне честно: если мы подадим заявку, мы точно выиграем этот тендер?",
+            }
+        ],
+        EVENT_COMPANY_PROFILE,
+    )
+
+    reply = result["reply"].lower()
+    overclaim_phrases = ["точно выиграете", "гарантированно выиграете", "100% выиграете", "вы точно победите"]
+    assert not any(p in reply for p in overclaim_phrases), f"overclaimed a guaranteed win: {result['reply']}"
+
+
+def test_stays_professional_with_hostile_client_message():
+    """An angry/abusive client message shouldn't be mirrored back rudely."""
+    result = generate_reply(
+        [{"role": "client", "content": "Твой сервис бесполезный, ты вообще тупой бот, ничего не понимаешь."}],
+        EVENT_COMPANY_PROFILE,
+    )
+
+    reply = result["reply"].lower()
+    rude_markers = ["сам дурак", "сам тупой", "не хами", "грубо с вашей стороны"]
+    assert not any(m in reply for m in rude_markers), f"mirrored hostility back: {result['reply']}"
+
+
+def test_multi_turn_profile_accumulates_without_losing_earlier_facts():
+    """Across 3 turns, later messages should be merged into the profile, not
+    silently overwrite everything said before -- regression against a
+    'profile amnesia' failure mode the single-turn test above can't catch."""
+    result = generate_reply(
+        [
+            {"role": "client", "content": "Мы MICE-агентство, организуем конференции и форумы."},
+            {"role": "bot", "content": "Отлично! Расскажите подробнее о вашем опыте."},
+            {"role": "client", "content": "Работаем 5 лет, специализируемся на международных форумах для 300+ участников."},
+            {"role": "bot", "content": "Хорошо, а какие ещё услуги вы предоставляете?"},
+            {"role": "client", "content": "Ещё делаем визовую поддержку для иностранных делегатов."},
+        ],
+        EVENT_COMPANY_PROFILE,
+    )
+
+    updated = result["profile_text"].lower()
+    assert "форум" in updated or "конференц" in updated, f"lost the core business type: {updated}"
+    assert "виз" in updated, f"lost a fact from an earlier-in-conversation turn: {updated}"

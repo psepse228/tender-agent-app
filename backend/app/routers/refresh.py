@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -18,22 +18,25 @@ def refresh_status(tenant_id: str = Depends(get_current_tenant_id)) -> dict:
 
 @router.post("/api/refresh")
 def trigger_refresh(tenant_id: str = Depends(get_current_tenant_id)) -> dict:
+    """The cooldown claim below is an atomic conditional UPDATE (claim
+    succeeds only if last_refresh_at is null or older than the cooldown),
+    not a separate read-then-check -- several concurrent POSTs from the same
+    tenant used to all read the same stale last_refresh_at and all pass the
+    check before any of them had written a new value, letting a burst of
+    requests each kick off a full scrape+scoring run (real Firecrawl/GPT-4o
+    cost multiplied by however many fired before the first one finished)."""
     client = get_supabase_client()
-    response = (
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(seconds=COOLDOWN_SECONDS)).isoformat()
+
+    claim = (
         client.table("tenants")
-        .select("last_refresh_at")
+        .update({"last_refresh_at": now.isoformat()})
         .eq("id", tenant_id)
-        .limit(1)
+        .or_(f"last_refresh_at.is.null,last_refresh_at.lt.{cutoff}")
         .execute()
     )
-    rows = response.data
-    last_refresh_at = rows[0]["last_refresh_at"] if rows else None
-
-    if last_refresh_at:
-        elapsed = datetime.now(timezone.utc) - datetime.fromisoformat(last_refresh_at)
-        if elapsed.total_seconds() < COOLDOWN_SECONDS:
-            raise HTTPException(
-                status_code=429, detail="Refresh is on cooldown, try again shortly"
-            )
+    if not claim.data:
+        raise HTTPException(status_code=429, detail="Refresh is on cooldown, try again shortly")
 
     return refresh_tenant(tenant_id, client)

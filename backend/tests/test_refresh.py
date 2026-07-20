@@ -17,6 +17,9 @@ class _FakeQuery:
     def __init__(self, table_data):
         self._table_data = table_data
         self._filters = {}
+        self._update_values = None
+        self._or_cutoff = "SENTINEL_NEVER_MATCHES"
+        self._or_active = False
 
     def select(self, *_a, **_k):
         return self
@@ -28,10 +31,30 @@ class _FakeQuery:
     def limit(self, *_a, **_k):
         return self
 
+    def update(self, values):
+        self._update_values = values
+        return self
+
+    def or_(self, expr):
+        # Only ever called with "last_refresh_at.is.null,last_refresh_at.lt.<cutoff>"
+        # in app/routers/refresh.py -- parse just that shape.
+        self._or_active = True
+        self._or_cutoff = expr.split("last_refresh_at.lt.")[1]
+        return self
+
     def execute(self):
         rows = [
             r for r in self._table_data if all(r.get(k) == v for k, v in self._filters.items())
         ]
+        if self._or_active:
+            rows = [
+                r
+                for r in rows
+                if r.get("last_refresh_at") is None or r["last_refresh_at"] < self._or_cutoff
+            ]
+        if self._update_values is not None:
+            for row in rows:
+                row.update(self._update_values)
         return SimpleNamespace(data=rows)
 
 
@@ -83,6 +106,27 @@ def test_allows_refresh_when_never_refreshed_before(monkeypatch):
     response = client.post("/api/refresh", cookies=_auth_cookie(TENANT_ID))
 
     assert response.status_code == 200
+
+
+def test_concurrent_refresh_requests_only_let_one_through(monkeypatch):
+    """Regression guard: several near-simultaneous POSTs from the same tenant
+    must not all pass the cooldown check against the same stale read. The
+    fake here applies the update to the shared table_data in place, so a
+    second call sees the first call's write -- exactly what the previous
+    read-then-check code failed to guarantee against real concurrent
+    requests."""
+    fake_client = _FakeClient({"tenants": [{"id": TENANT_ID, "last_refresh_at": None}]})
+    monkeypatch.setattr("app.routers.refresh.get_supabase_client", lambda: fake_client)
+    monkeypatch.setattr(
+        "app.routers.refresh.refresh_tenant",
+        lambda tenant_id, client: {"tenders": [], "sources_status": []},
+    )
+
+    first = client.post("/api/refresh", cookies=_auth_cookie(TENANT_ID))
+    second = client.post("/api/refresh", cookies=_auth_cookie(TENANT_ID))
+
+    assert first.status_code == 200
+    assert second.status_code == 429
 
 
 def test_requires_auth():
