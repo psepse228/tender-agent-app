@@ -353,3 +353,68 @@ def test_scoring_reliably_disambiguates_sparse_radio_stations_listing_row():
             f"two-way-radio HARDWARE reseller just because both mention 'radio': {tender}"
         )
         assert tender["recommendation"] == "Пропустить", tender
+
+
+EVENTS_DMC_PROFILE = """Компания: Seventeam (seventeam.uz), Ташкент, Узбекистан. Сфера деятельности: \
+MICE-агентство и Destination Management Company (DMC) полного цикла. Организуем деловые и \
+корпоративные мероприятия под ключ -- конференции, форумы, выставки, деловые встречи, \
+инсентив-туры, деловые поездки и делегации. Ключевые компетенции: организация конференций/ \
+форумов/семинаров/выставок под ключ, аренда и подбор конференц-залов, транспортное обслуживание \
+делегаций, трансферы, кейтеринг и банкетное обслуживание, гостиничное размещение групп, визовая \
+поддержка, услуги переводчиков и протокольное сопровождение."""
+
+# Real scraped Uztender listing rows (2026-07-24) -- title, region, and the
+# platform's own coarse category tag ("Транспорт и логистика"), no
+# description. One row's own title is itself just "Отбор" ("Selection"), a
+# generic placeholder carrying zero information beyond the category tag.
+REAL_UZTENDER_CARGO_AND_PLACEHOLDER_ROWS = """
+Активен
+
+Услуга грузоперевозки
+
+Бухарская область
+Транспорт и логистика
+
+Бюджет 275 000 000 сум
+
+Закрытие 30 июля 2026
+
+Активен
+
+Отбор
+
+Бухарская область
+Транспорт и логистика
+
+Бюджет 334 822 488 сум
+
+Закрытие 30 июля 2026
+"""
+
+
+def test_scoring_does_not_treat_a_shared_category_tag_as_a_service_match():
+    """Real production false positive (2026-07-24): an events/MICE/DMC company
+    (whose actual transport service is passenger/delegate transport for events)
+    had "Услуга грузоперевозки" (freight/cargo hauling) score 68-74% match,
+    reasoning it "corresponds to the company's transport service" -- the model
+    was reading the platform's shared category tag ("Транспорт и логистика")
+    as evidence of a match, when the tag bundles freight hauling, utility
+    material delivery, and passenger transport as one bucket. A second row in
+    the same real scrape has a title that is itself just "Отбор" (a generic
+    placeholder with zero real information beyond the category tag) and was
+    separately scoring 60-75% on category-tag overlap alone. Repeats the call
+    to guard against both the false match and re-introduced omission flakiness."""
+    for _ in range(4):
+        tenders = extract_and_score(
+            REAL_UZTENDER_CARGO_AND_PLACEHOLDER_ROWS,
+            {"name": "Uztender", "url": "https://uztender.com"},
+            EVENTS_DMC_PROFILE,
+        )
+        assert len(tenders) == 2, f"both rows must be extracted, never omitted: {tenders}"
+        for tender in tenders:
+            assert tender["matchPercent"] < 40, (
+                f"a shared platform category tag ('Транспорт и логистика') must not read as a "
+                f"service match for either a titled freight/cargo tender or a title-free "
+                f"placeholder row, for a company whose real service is passenger/delegate "
+                f"transport, not freight hauling: {tender}"
+            )

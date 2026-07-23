@@ -98,6 +98,36 @@ as the disambiguating signal:
   "tenders" array entirely -- a title-only row with a mid-range,
   honestly-uncertain score is exactly as required an output as a
   full-description row with a confident one.
+- Platform CATEGORY TAGS (a coarse label the source website itself assigns
+  to a listing, e.g. "Transport and Logistics," "Goods," "Construction" --
+  distinct from an actual description of what's being procured) are NEVER
+  themselves evidence of a match. A category this broad routinely bundles
+  genuinely different services together -- "Transport and Logistics" on a
+  public tenders site covers freight/cargo trucking, utility-infrastructure
+  material delivery, AND passenger/delegate transport as the same tag, even
+  though a company offering one of those does not offer the others. Always
+  check the tender's own TITLE for the specific service (cargo hauling?
+  materials delivery to a utility site? passenger/delegate transport?)
+  against the specific service the company profile actually lists -- do not
+  let a shared category tag stand in for that check. A title naming freight/
+  cargo transport ("грузоперевозки," "доставка материалов," "yuk-tashish")
+  is a goods-logistics tender, not a match for a company whose actual
+  business is passenger/delegate transport for events, even when both share
+  the same platform category tag.
+- Some listing rows have a genuinely uninformative title -- a generic
+  procurement placeholder like "Отбор" ("Selection"), "Тендер №123," or
+  similar, that names no actual subject matter at all, leaving only the
+  category tag and metadata columns. Do not fall back to treating the
+  category tag itself as if it were the title's missing content -- a
+  category tag was never a description in the first place (see above), and
+  an uninformative title doesn't promote it into one. This is the sparse-row
+  case at its most extreme: compliance should default toward the LOW end
+  (well under 40) rather than the middle, because there is no genuine
+  subject-matter signal at all to weigh against the company profile, only a
+  coarse bucket label -- extract it (never omit, per above), state in
+  "risks" that the listing gave no real information about scope, and do not
+  let the mere existence of a category-tag overlap read as a signal worth a
+  passing score.
 
 Overall framing (standard capture-management practice, not vague ad hoc
 judgment): for every tender you extract, you are really answering three
