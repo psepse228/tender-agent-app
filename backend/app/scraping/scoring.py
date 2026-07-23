@@ -69,6 +69,36 @@ Domain-match rule (apply this before anything else):
   same-sector tender that merely emphasizes a sub-skill the profile doesn't
   explicitly list.
 
+Sparse listing-page rows -- many sources give you only a bare title plus a
+few metadata columns (country, notice type, language, date), with no
+description at all. On a title this short, do NOT resolve genuine ambiguity
+by picking whichever reading happens to overlap a word in the company
+profile -- that is exactly backwards, it means the vaguer the source, the
+easier it is to force a false match. Instead use the tender's OWN metadata
+as the disambiguating signal:
+- Notice/procurement TYPE is the strongest such signal. "Request for
+  Expression of Interest," "Request for Proposals," or "Terms of
+  Reference"/consultancy language means the tender is selecting a service
+  provider, consultant, or partner ORGANIZATION -- never a purchase of
+  physical goods, even if the title contains a word that also names a
+  physical product. "Request for Bids," "Invitation for Bids," "Request for
+  Quotation," or "Goods" in the notice type means the opposite: an actual
+  goods/equipment procurement. A company that sells physical hardware does
+  not match an Expression-of-Interest/consultancy notice merely because the
+  title contains the product's name -- that title is naming who is being
+  selected (e.g. "selection of N local radio stations" = choosing broadcast
+  partners, not buying N radios), not what is being bought.
+- If the notice type and title still leave real ambiguity after applying
+  that rule, and no description is available to resolve it further, that
+  uncertainty itself belongs in "risks" (state plainly that the listing
+  didn't provide enough detail to confirm the tender's actual scope) and
+  should pull compliance toward the middle rather than either extreme --
+  do not let genuine uncertainty get rounded up into a confident match.
+  Uncertainty is still never a reason to leave the tender out of the
+  "tenders" array entirely -- a title-only row with a mid-range,
+  honestly-uncertain score is exactly as required an output as a
+  full-description row with a confident one.
+
 Overall framing (standard capture-management practice, not vague ad hoc
 judgment): for every tender you extract, you are really answering three
 questions -- is this opportunity real (genuine, fundable, achievable

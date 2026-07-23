@@ -311,41 +311,45 @@ TWO_WAY_RADIO_RESELLER_PROFILE = """Компания предоставляет 
 бизнес-ивентов в Узбекистане. Компания занимается продажей профессиональных и любительских раций \
 и заинтересована в тендерах, связанных с покупкой раций для компаний в Узбекистане."""
 
-RADIO_BROADCAST_STATIONS_TENDER = """Notice Title: SELECTION DE 20 RADIOS DE PROXIMITE POUR LA
-COMMUNICATION ET LA VISIBILITE RELATIVES AUX REFORMES DU MENAET MISES EN OEUVRE PAR LE PRSEB
-Organization: World Bank
-Country: Burkina Faso
-Deadline: 21.07.2026
-Description: Le Ministere de l'Education Nationale, de l'Alphabetisation et de la Promotion des
-Langues Nationales (MENAET), a travers le PRSEB, souhaite selectionner 20 stations de radio de
-proximite (radios communautaires locales diffusant en FM) pour produire et diffuser des emissions
-de sensibilisation du public sur les reformes du secteur educatif. Il ne s'agit pas de la
-fourniture d'equipements radio mais de prestations de services de diffusion mediatique."""
+# This is the REAL shape of the content the model actually receives from this
+# source -- a bare markdown listing-page row (title + country + notice type +
+# language + date), no description at all. An earlier version of this test
+# used a fabricated paragraph that explicitly spelled out "this is not
+# equipment supply, it's a media broadcasting service" -- the model correctly
+# disambiguates when handed that much explicit help, which is exactly why
+# that version of the test passed while the REAL production content (this
+# sparse row, scraped 2026-07-24) kept scoring 50-56% match 5/5 times, wrongly
+# reasoning "тендера на поставку радиостанций" (tender for SUPPLYING radio
+# stations). Only after adding the notice-type disambiguation rule (an
+# "Expression of Interest" selects a service-provider organization, never
+# procures physical goods) did this sparse, realistic version score correctly.
+REAL_SPARSE_WORLD_BANK_LISTING_ROW = """
+| Title | Country | Project | Notice Type | Language | Date |
+|---|---|---|---|---|---|
+| SELECTION DE 20 RADIOS DE PROXIMITE POUR LA COMMUNICATION ET LA VISIBILITE RELATIVES AUX REFORMES DU MENAET MISES EN OEUVRE PAR LE PRSEB | Cote d'Ivoire | Cote d'Ivoire Strengthening Basic Education System Operation - P177800 | Request for Expression of Interest | French | July 21, 2026 |
+"""
 
 
-def test_scoring_does_not_confuse_broadcast_radio_stations_with_two_way_radio_hardware():
-    """Real false positive caught in a 2026-07-23 live audit of production data: a
-    two-way-radio (рации) hardware reseller's stored tender list included this exact
-    World Bank tender at 68% compliance, reasoning "the company sells radios, which
-    makes this tender suitable" -- a pure surface word collision between "radio"
-    (FM broadcast media, what this tender procures) and "рация" (two-way radio
-    hardware, what the company sells), compounded by the source being in French and
-    for an unrelated country (Burkina Faso vs. the company's Uzbekistan-only market).
-    The stored score predates this file's domain-match rule (d8a0f32/8219388) ever
-    running against it -- confirmed live that the current prompt already scores it
-    correctly, this test just locks that in as a permanent regression guard, since
-    none of the existing domain-mismatch cases above exercise a same-word,
-    different-meaning collision or a foreign-language source."""
-    tenders = extract_and_score(
-        RADIO_BROADCAST_STATIONS_TENDER,
-        {"name": "World Bank", "url": "https://projects.worldbank.org/en/projects-operations/procurement-detail/OP00454733"},
-        TWO_WAY_RADIO_RESELLER_PROFILE,
-    )
-
-    assert tenders, "expected the tender to be extracted"
-    tender = tenders[0]
-    assert tender["compliance"] <= 20, (
-        f"broadcast radio STATIONS tender should not score as a match for a two-way-radio "
-        f"HARDWARE reseller just because both mention 'radio': {tender}"
-    )
-    assert tender["recommendation"] == "Пропустить", tender
+def test_scoring_reliably_disambiguates_sparse_radio_stations_listing_row():
+    """Real production false positive (2026-07-24): a two-way-radio (рации)
+    hardware reseller's tender feed scored this exact real World Bank listing
+    row 50-56% match, reasoning the company "sells radios" -- confusing a
+    French "selection of local radio STATIONS" (an EOI selecting broadcast
+    partner organizations) with a hardware purchase, purely from the bare
+    title with no description. Repeats the call several times: the fix that
+    corrected the scoring also has to not reintroduce the omission flakiness
+    from a prior regression (d8a0f32) -- one run during verification of this
+    exact fix silently dropped the tender from the output entirely."""
+    for _ in range(5):
+        tenders = extract_and_score(
+            REAL_SPARSE_WORLD_BANK_LISTING_ROW,
+            {"name": "World Bank", "url": "https://projects.worldbank.org/en/projects-operations/procurement"},
+            TWO_WAY_RADIO_RESELLER_PROFILE,
+        )
+        assert tenders, "a sparse, honestly-ambiguous listing row must never be silently omitted"
+        tender = tenders[0]
+        assert tender["compliance"] <= 20, (
+            f"broadcast radio STATIONS selection (an EOI) should not score as a match for a "
+            f"two-way-radio HARDWARE reseller just because both mention 'radio': {tender}"
+        )
+        assert tender["recommendation"] == "Пропустить", tender
