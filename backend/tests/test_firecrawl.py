@@ -34,7 +34,25 @@ def test_returns_markdown_on_first_success(monkeypatch):
     result = scrape_source(SOURCE, sleep=sleeps.append)
 
     assert result == "# Tenders"
-    assert sleeps == []
+
+
+def test_requests_a_wait_for_js_rendered_listing_pages(monkeypatch):
+    # Regression guard: UNGM's notice list is JS-rendered -- without waiting
+    # for it, a scrape can land before results finish loading and capture
+    # only the empty search-filter shell (confirmed live, 2026-07-24: same
+    # URL/code returned 0 tenders one refresh, 3 the next, purely from
+    # request timing).
+    captured = {}
+
+    def fake_post(*_a, **kwargs):
+        captured.update(kwargs)
+        return _FakeResponse(200, {"data": {"markdown": "# Tenders"}})
+
+    monkeypatch.setattr("app.scraping.firecrawl.httpx.post", fake_post)
+
+    scrape_source(SOURCE)
+
+    assert captured["json"]["waitFor"] == 5000
 
 
 def test_retries_on_bad_gateway_then_succeeds(monkeypatch):

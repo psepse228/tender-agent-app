@@ -23,8 +23,13 @@ def scrape_source(source: dict, sleep=time.sleep) -> str | None:
                     "Authorization": f"Bearer {settings.firecrawl_api_key}",
                     "Content-Type": "application/json",
                 },
-                json={"url": source["url"], "formats": ["markdown"], "onlyMainContent": True},
-                timeout=25.0,
+                # waitFor matters for JS-rendered listing pages (confirmed on
+                # UNGM, 2026-07-24): without it, a scrape can land before the
+                # results table finishes loading and capture only the empty
+                # search-filter shell -- same URL, same code, but 0 tenders
+                # one refresh and 3 the next, purely from request timing.
+                json={"url": source["url"], "formats": ["markdown"], "onlyMainContent": True, "waitFor": 5000},
+                timeout=35.0,
             )
             if response.status_code == 200:
                 data = response.json()
