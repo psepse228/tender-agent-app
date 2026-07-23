@@ -1,10 +1,15 @@
 import json
+import logging
+import time
 
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 
 from app.config import get_settings
 
+logger = logging.getLogger(__name__)
+
 CONTENT_CHAR_LIMIT = 40_000
+MAX_ATTEMPTS = 3
 
 SYSTEM_PROMPT_TEMPLATE = """You are a tender analyst for a company in Tashkent, Uzbekistan.
 
@@ -140,29 +145,47 @@ than 10 real tenders, and a low cap was silently discarding tenders that were
 already scraped and available. If no tenders found return {{ "tenders": [] }}."""
 
 
-def extract_and_score(content: str, source: dict, profile_text: str, client=None) -> list[dict]:
+def extract_and_score(content: str, source: dict, profile_text: str, client=None, sleep=time.sleep) -> list[dict]:
     if client is None:
         client = OpenAI(api_key=get_settings().openai_api_key)
 
     truncated = content[:CONTENT_CHAR_LIMIT]
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(profile_text=profile_text)
 
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": f"Platform: {source['name']}\nURL: {source['url']}\n\nContent:\n{truncated}",
-            },
-        ],
-        # Raised alongside the 10->30 tender cap above -- 3000 tokens wasn't
-        # enough headroom for 30 fully-detailed tender objects and risked
-        # truncating the JSON mid-response.
-        max_tokens=8000,
-        temperature=0.1,
-    )
+    # A tenant refresh fires every source concurrently (see pipeline.py's
+    # ThreadPoolExecutor), and the cron job runs every tenant back-to-back --
+    # both real production tenants hitting gpt-4o's 30K TPM org limit at once
+    # is an observed, not hypothetical, failure (2026-07-24). Retry with
+    # backoff mirrors firecrawl.py's existing convention rather than letting
+    # a transient per-minute limit permanently drop a source for this cycle.
+    response = None
+    for attempt in range(MAX_ATTEMPTS):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user",
+                        "content": f"Platform: {source['name']}\nURL: {source['url']}\n\nContent:\n{truncated}",
+                    },
+                ],
+                # Raised alongside the 10->30 tender cap above -- 3000 tokens wasn't
+                # enough headroom for 30 fully-detailed tender objects and risked
+                # truncating the JSON mid-response.
+                max_tokens=8000,
+                temperature=0.1,
+            )
+            break
+        except RateLimitError as exc:
+            logger.warning(
+                "OpenAI rate limit scoring %s (attempt %s/%s): %s",
+                source["name"], attempt + 1, MAX_ATTEMPTS, exc,
+            )
+            if attempt == MAX_ATTEMPTS - 1:
+                raise
+            sleep(10 * (2**attempt))
 
     parsed = json.loads(response.choices[0].message.content)
     tenders = parsed.get("tenders", [])

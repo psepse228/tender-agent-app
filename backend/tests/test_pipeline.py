@@ -280,6 +280,58 @@ def test_drops_tenders_below_the_minimum_relevance_threshold(monkeypatch):
     assert {r["title"] for r in store["tenders"]} == {"Borderline tender", "Good tender"}
 
 
+def test_dedupes_the_same_tender_appearing_on_multiple_sources(monkeypatch):
+    # Real production pattern: eTender UzEx alone routinely returns 10+
+    # tenders a refresh, and the same real-world tender can be listed on
+    # more than one aggregator. Keep the higher-scoring instance, not both.
+    store = {"company_profile": [], "tenants": [{"id": TENANT_ID}], "tenders": []}
+
+    def fake_process(source, _profile_text):
+        if source["name"] == "eTender UzEx":
+            return {
+                "name": source["name"],
+                "status": "ok",
+                "tenders": [{"title": "Организация мероприятий", "organization": "Uzcard АО ЕОПЦ", "matchPercent": 79}],
+            }
+        if source["name"] == "Uztender":
+            return {
+                "name": source["name"],
+                "status": "ok",
+                "tenders": [{"title": "организация мероприятий", "organization": "Uzcard АО ЕОПЦ", "matchPercent": 65}],
+            }
+        return {"name": source["name"], "status": "ok", "tenders": []}
+
+    monkeypatch.setattr("app.scraping.pipeline._process_source", fake_process)
+
+    result = refresh_tenant(TENANT_ID, _FakeClient(store))
+
+    assert len(result["tenders"]) == 1
+    assert result["tenders"][0]["matchPercent"] == 79
+    assert len(store["tenders"]) == 1
+
+
+def test_does_not_dedupe_genuinely_different_tenders_with_similar_titles(monkeypatch):
+    store = {"company_profile": [], "tenants": [{"id": TENANT_ID}], "tenders": []}
+
+    def fake_process(source, _profile_text):
+        if source["name"] == "eTender UzEx":
+            return {
+                "name": source["name"],
+                "status": "ok",
+                "tenders": [
+                    {"title": "Организация мероприятий", "organization": "Uzcard АО ЕОПЦ", "matchPercent": 79},
+                    {"title": "Организация мероприятий", "organization": "Ministry of Investment", "matchPercent": 60},
+                ],
+            }
+        return {"name": source["name"], "status": "ok", "tenders": []}
+
+    monkeypatch.setattr("app.scraping.pipeline._process_source", fake_process)
+
+    result = refresh_tenant(TENANT_ID, _FakeClient(store))
+
+    assert len(result["tenders"]) == 2
+
+
 def test_scrapes_tenant_specific_custom_sources_alongside_the_shared_list(monkeypatch):
     store = {
         "company_profile": [],

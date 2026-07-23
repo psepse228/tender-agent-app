@@ -1,11 +1,21 @@
 import json
 from types import SimpleNamespace
 
+import httpx
 import pytest
+from openai import RateLimitError
 
 from app.scraping.scoring import CONTENT_CHAR_LIMIT, SYSTEM_PROMPT_TEMPLATE, extract_and_score
 
 SOURCE = {"name": "eTender UzEx", "url": "https://etender.uzex.uz"}
+
+
+def _rate_limit_error():
+    return RateLimitError(
+        "rate limit",
+        response=httpx.Response(429, request=httpx.Request("POST", "https://api.openai.com")),
+        body=None,
+    )
 
 
 class _FakeOpenAI:
@@ -16,6 +26,25 @@ class _FakeOpenAI:
 
     def _create(self, **kwargs):
         self.last_kwargs = kwargs
+        message = SimpleNamespace(content=json.dumps(self._payload))
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+
+class _FlakyRateLimitedOpenAI:
+    """Raises RateLimitError a fixed number of times before succeeding --
+    mirrors the real 429 hit when two tenants' refreshes overlap on the
+    shared org TPM budget (2026-07-24 production incident)."""
+
+    def __init__(self, payload, fail_times):
+        self._payload = payload
+        self._fail_times = fail_times
+        self.call_count = 0
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
+
+    def _create(self, **_kwargs):
+        self.call_count += 1
+        if self.call_count <= self._fail_times:
+            raise _rate_limit_error()
         message = SimpleNamespace(content=json.dumps(self._payload))
         return SimpleNamespace(choices=[SimpleNamespace(message=message)])
 
@@ -165,3 +194,25 @@ def test_propagates_error_on_malformed_json_response():
 
     with pytest.raises(json.JSONDecodeError):
         extract_and_score("md", SOURCE, "profile", client=_BadJSONClient())
+
+
+def test_retries_on_rate_limit_then_succeeds():
+    fake_client = _FlakyRateLimitedOpenAI({"tenders": [{"title": "T", "matchPercent": 50}]}, fail_times=2)
+    sleeps = []
+
+    result = extract_and_score("md", SOURCE, "profile", client=fake_client, sleep=sleeps.append)
+
+    assert result[0]["title"] == "T"
+    assert fake_client.call_count == 3
+    assert sleeps == [10, 20]
+
+
+def test_raises_after_exhausting_rate_limit_retries():
+    fake_client = _FlakyRateLimitedOpenAI({"tenders": []}, fail_times=99)
+    sleeps = []
+
+    with pytest.raises(RateLimitError):
+        extract_and_score("md", SOURCE, "profile", client=fake_client, sleep=sleeps.append)
+
+    assert fake_client.call_count == 3
+    assert sleeps == [10, 20]

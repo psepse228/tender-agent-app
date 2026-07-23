@@ -1,4 +1,5 @@
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
@@ -91,6 +92,36 @@ def _to_number(value) -> float:
         return 0
 
 
+_FINGERPRINT_NON_ALNUM = re.compile(r"[^a-zа-я0-9]+", re.IGNORECASE)
+
+
+def _fingerprint(tender: dict) -> str:
+    """Same real-world tender routinely gets listed on more than one of the
+    ~9 aggregator sources (eTender UzEx alone can return 10+ tenders a
+    refresh) -- normalize title+organization the same way notified_tenders
+    already does for alert dedup, so it doesn't show up as duplicate rows."""
+    raw = f"{tender.get('title') or ''} {tender.get('organization') or ''}".lower()
+    return _FINGERPRINT_NON_ALNUM.sub("", raw)
+
+
+def _dedupe_tenders(tenders: list[dict]) -> list[dict]:
+    """Keep the highest-scoring instance of each fingerprint -- the same
+    tender scraped from two sources can get slightly different matchPercent
+    values (different surrounding page context in each completion), and the
+    higher one reflects the model having more/better information, not a
+    reason to arbitrarily prefer whichever source happened to finish its
+    request first."""
+    best_by_fingerprint: dict[str, dict] = {}
+    for tender in tenders:
+        fp = _fingerprint(tender)
+        if not fp:
+            continue
+        existing = best_by_fingerprint.get(fp)
+        if existing is None or _to_number(tender.get("matchPercent")) > _to_number(existing.get("matchPercent")):
+            best_by_fingerprint[fp] = tender
+    return list(best_by_fingerprint.values())
+
+
 def _to_row(tender: dict, tenant_id: str) -> dict:
     return {
         "tenant_id": tenant_id,
@@ -142,12 +173,12 @@ def refresh_tenant(tenant_id: str, client) -> dict:
     finally:
         _progress[tenant_id]["running"] = False
 
-    tenders = [
+    tenders = _dedupe_tenders([
         t
         for r in results
         for t in r["tenders"]
         if t.get("title") and _to_number(t.get("matchPercent")) >= MIN_RELEVANT_MATCH_PERCENT
-    ]
+    ])
     sources_status = [
         {"name": r["name"], "status": r["status"], "count": len(r["tenders"])}
         for r in results
