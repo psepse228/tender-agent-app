@@ -62,7 +62,12 @@ export default function FavoriteDetail() {
   }
 
   return (
-    <>
+    // .chat-screen here is just the generic "flex column filling .screen"
+    // shell (see index.css) -- header/tabs shrink to content, the active
+    // pane is the one flex:1 child, always internally scrolled instead of
+    // sometimes-the-page-scrolls/sometimes-the-pane-scrolls depending on
+    // which tab happens to be open.
+    <div className="chat-screen">
       <div className="fav-detail-header">
         <button className="fav-chat-back" onClick={() => navigate('/favorites')}>
           <ArrowLeftIcon /> Назад к чатам
@@ -81,22 +86,20 @@ export default function FavoriteDetail() {
       </div>
 
       {tab === 'stats' ? (
-        <div className="sheet-body" style={{ padding: '16px 16px 40px' }}>
+        <div className="sheet-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 16px 40px' }}>
           <TenderStats tender={favorite} isFavorite favoriteBusy={removeAction.busy} onRemoveFavorite={removeAction.run} />
         </div>
       ) : (
         !chatLoading && (
-          <div style={{ padding: '0 16px' }}>
-            <ChatPanel
-              messages={messages}
-              placeholderMessage="Спроси меня что угодно про этот тендер — требования, риски, стоит ли подавать заявку."
-              inputPlaceholder="Спроси что-нибудь про этот тендер..."
-              sending={sending}
-              onSend={handleSend}
-            />
-          </div>
+          <ChatPanel
+            messages={messages}
+            placeholderMessage="Спроси меня что угодно про этот тендер — требования, риски, стоит ли подавать заявку."
+            inputPlaceholder="Спроси что-нибудь про этот тендер..."
+            sending={sending}
+            onSend={handleSend}
+          />
         )
       )}
-    </>
+    </div>
   );
 }

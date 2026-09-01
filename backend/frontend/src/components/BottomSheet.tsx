@@ -32,9 +32,17 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
             transition={{ type: 'spring', damping: 32, stiffness: 320 }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.6 }}
+            // Elastic resistance is applied to the *reported* drag offset
+            // too, not just the visual rubber-band -- 0.6 here meant a
+            // real ~400px finger swipe only ever produced an offset well
+            // under the 120px close threshold below, so the swipe visibly
+            // moved the sheet but could never actually close it (UI-audit
+            // #3). 0.92 keeps a token bit of resistance (so it still reads
+            // as "grabbing the sheet", not 1:1 pass-through) while letting
+            // a real swipe's offset actually cross the threshold.
+            dragElastic={{ top: 0, bottom: 0.92 }}
             onDragEnd={(_, info) => {
-              if (info.offset.y > 120 || info.velocity.y > 600) onClose();
+              if (info.offset.y > 80 || info.velocity.y > 400) onClose();
             }}
           >
             <div className="sheet-handle" />
