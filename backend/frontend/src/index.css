@@ -547,20 +547,28 @@ button { font: inherit; }
   content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
   background: var(--grad); opacity: .45;
 }
-.sheet-handle {
-  width: 40px; height: 3px;
-  background: rgba(255,255,255,.1); border-radius: 2px;
-  margin: 14px auto 0;
+/* A generously-sized invisible tap/drag target around the visible handle
+   bar -- the bar itself is only 3px tall, far under any real touch-target
+   guideline, and this is the one area explicitly meant to start the
+   sheet's drag gesture (see BottomSheet.tsx's dragControls). */
+.sheet-handle-hitzone {
+  display: flex; justify-content: center;
+  padding: 14px 0 12px;
+  touch-action: none; cursor: grab;
 }
+.sheet-handle-hitzone:active { cursor: grabbing; }
+.sheet-handle { width: 40px; height: 3px; background: rgba(255,255,255,.1); border-radius: 2px; }
 .sheet-close-btn {
-  position: absolute; top: 14px; right: 14px; z-index: 1;
-  width: 30px; height: 30px; border-radius: 50%;
+  /* 40px, not the old 30px -- under Apple's 44pt minimum tap-target
+     guideline, and one of the buttons the UI audit found people
+     struggling to actually land a tap on. */
+  position: absolute; top: 12px; right: 12px; z-index: 1;
+  width: 40px; height: 40px; border-radius: 50%;
   background: var(--glass); border: 1px solid var(--glass-border);
   backdrop-filter: var(--glass-blur-thin); -webkit-backdrop-filter: var(--glass-blur-thin);
   color: rgba(148,163,184,.8); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
-.sheet-close-btn:active { transform: scale(.9); }
 .sheet-body { padding: 20px 18px 48px; }
 
 /* Sheet score row -- glass pill */
