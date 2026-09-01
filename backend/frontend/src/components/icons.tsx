@@ -217,3 +217,39 @@ export function XCircleIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function UserIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" className={className} fill="none" aria-hidden>
+      <circle cx="12" cy="8.2" r="3.6" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M4.5 20c1.2-3.8 4.3-5.8 7.5-5.8s6.3 2 7.5 5.8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ClockIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" className={className} fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M12 7v5l3.5 2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function LayersIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" className={className} fill="none" aria-hidden>
+      <path d="M12 3.5 21 8.5 12 13.5 3 8.5 12 3.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M3 13l9 5 9-5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function BuildingIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" className={className} fill="none" aria-hidden>
+      <rect x="5" y="3.5" width="14" height="17" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M8.5 7.5h2M13.5 7.5h2M8.5 11.5h2M13.5 11.5h2M8.5 15.5h2M13.5 15.5h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}

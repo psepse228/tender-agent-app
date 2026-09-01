@@ -341,6 +341,33 @@ button { font: inherit; }
 
 /* ─── CARDS ─── */
 .cards { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+
+/* ─── FEED GROUPS (Тендеры/Пакет grouped by urgency or AI recommendation,
+   not one flat list) ─── */
+.feed-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.feed-group-label {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--fd); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(148,163,184,.6); padding: 0 2px 2px;
+}
+.feed-group-count {
+  margin-left: auto; font-size: 9px; font-weight: 600; color: rgba(148,163,184,.45);
+  background: rgba(255,255,255,.04); border-radius: 100px; padding: 2px 7px;
+}
+
+/* ─── TIMELINE ROW (days-to-deadline, on the tender detail page) ─── */
+.timeline-row {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11.5px; color: var(--cyan); font-weight: 600;
+  background: var(--cyan-d); border: 1px solid var(--border-c);
+  border-radius: 10px; padding: 9px 12px; margin-bottom: 16px;
+}
+
+/* ─── ACCOUNT CARD (Профиль → Аккаунт) ─── */
+.account-card { display: flex; align-items: center; gap: 12px; }
+.account-card-email { font-family: var(--fd); font-size: 14px; font-weight: 700; word-break: break-all; }
+.account-card-status { font-size: 11.5px; color: var(--green); margin-top: 3px; }
+.account-card-status.suspended { color: var(--red); }
 .card {
   border-radius: var(--r);
   background: var(--glass);
@@ -524,51 +551,11 @@ button { font: inherit; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .skeleton::after { animation: none; } }
 
-/* ─── BOTTOM SHEET ─── */
-.sheet-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.65);
-  z-index: 100;
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-}
-
-.sheet {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: var(--glass);
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid rgba(56,189,248,.18);
-  border-bottom: none;
-  border-radius: 24px 24px 0 0;
-  z-index: 101;
-  max-height: 90vh; overflow-y: auto;
-  box-shadow: var(--glass-shadow);
-}
-.sheet::before {
-  content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
-  background: var(--grad); opacity: .45;
-}
-/* A generously-sized invisible tap/drag target around the visible handle
-   bar -- the bar itself is only 3px tall, far under any real touch-target
-   guideline, and this is the one area explicitly meant to start the
-   sheet's drag gesture (see BottomSheet.tsx's dragControls). */
-.sheet-handle-hitzone {
-  display: flex; justify-content: center;
-  padding: 14px 0 12px;
-  touch-action: none; cursor: grab;
-}
-.sheet-handle-hitzone:active { cursor: grabbing; }
-.sheet-handle { width: 40px; height: 3px; background: rgba(255,255,255,.1); border-radius: 2px; }
-.sheet-close-btn {
-  /* 40px, not the old 30px -- under Apple's 44pt minimum tap-target
-     guideline, and one of the buttons the UI audit found people
-     struggling to actually land a tap on. */
-  position: absolute; top: 12px; right: 12px; z-index: 1;
-  width: 40px; height: 40px; border-radius: 50%;
-  background: var(--glass); border: 1px solid var(--glass-border);
-  backdrop-filter: var(--glass-blur-thin); -webkit-backdrop-filter: var(--glass-blur-thin);
-  color: rgba(148,163,184,.8); cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-}
+/* ─── SHEET-STYLE CONTENT PADDING ───
+   Named "sheet" from when this markup lived in a bottom sheet -- now used
+   for the same score/criteria/badges block (TenderStats) inside a full
+   detail page instead. Kept the name to keep this diff small; the modal
+   itself (.sheet-overlay etc.) is gone along with BottomSheet.tsx. */
 .sheet-body { padding: 20px 18px 48px; }
 
 /* Sheet score row -- glass pill */

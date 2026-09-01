@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { SessionProvider, useSession } from './lib/session';
 import { FavoritesProvider } from './lib/favorites';
+import { TendersProvider } from './lib/tenders';
 import { ToastProvider } from './lib/toast';
 import { RefreshControlProvider } from './lib/refreshControl';
 import { BootSplash } from './components/BootSplash';
 import Layout from './components/Layout';
 import Tenders from './pages/Tenders';
 import Favorites from './pages/Favorites';
-import FavoriteDetail from './pages/FavoriteDetail';
-import Scout from './pages/Scout';
-import Sources from './pages/Sources';
+import TenderDetail from './pages/TenderDetail';
+import Profile from './pages/Profile';
 import Methodology from './pages/Methodology';
 import { useTelegramInit } from './lib/useTelegramInit';
 
@@ -28,11 +28,13 @@ export default function App() {
     <ToastProvider>
       <SessionProvider>
         <FavoritesProvider>
-          <RefreshControlProvider>
-            <BrowserRouter>
-              <Gate />
-            </BrowserRouter>
-          </RefreshControlProvider>
+          <TendersProvider>
+            <RefreshControlProvider>
+              <BrowserRouter>
+                <Gate />
+              </BrowserRouter>
+            </RefreshControlProvider>
+          </TendersProvider>
         </FavoritesProvider>
       </SessionProvider>
     </ToastProvider>
@@ -55,9 +57,8 @@ function Gate() {
         <Route element={<Layout />}>
           <Route path="/" element={<Tenders />} />
           <Route path="/favorites" element={<Favorites />} />
-          <Route path="/favorites/:id" element={<FavoriteDetail />} />
-          <Route path="/scout" element={<Scout />} />
-          <Route path="/sources" element={<Sources />} />
+          <Route path="/tenders/:id" element={<TenderDetail />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/methodology" element={<Methodology />} />
         </Route>
       </Routes>
