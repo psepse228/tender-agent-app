@@ -160,11 +160,11 @@ export function TenderStats({ tender: t, isFavorite, favoriteBusy, onAddFavorite
       )}
 
       {isFavorite ? (
-        <button className="favorite-btn remove" onClick={onRemoveFavorite} disabled={favoriteBusy}>
+        <button className="favorite-btn remove press" onClick={onRemoveFavorite} disabled={favoriteBusy}>
           <XCircleIcon /> Убрать из Tender AI
         </button>
       ) : (
-        <button className="favorite-btn" onClick={onAddFavorite} disabled={favoriteBusy}>
+        <button className="favorite-btn press" onClick={onAddFavorite} disabled={favoriteBusy}>
           <SparkleIcon /> Добавить в Tender AI
         </button>
       )}

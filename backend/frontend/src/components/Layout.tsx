@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import * as api from '../lib/api';
 import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
@@ -48,7 +48,18 @@ export default function Layout() {
       <Header />
       <TelegramLinkBanner />
       <div className="screen" ref={screenRef}>
-        <Outlet />
+        <AnimatePresence initial={false}>
+          <motion.div
+            key={location.pathname}
+            style={{ height: '100%' }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6, position: 'absolute', inset: 0 }}
+            transition={{ duration: 0.2, ease: [0.2, 0.7, 0.3, 1] }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </div>
       <BottomNav />
     </div>
@@ -103,13 +114,13 @@ function Header() {
       <div className="header-right">
         {lastUpdate && <div className="last-update">{lastUpdate}</div>}
         {onRefresh && (
-          <button className={`refresh-btn${spinning ? ' spinning' : ''}`} onClick={onRefresh} aria-label="Обновить">
+          <button className={`refresh-btn press${spinning ? ' spinning' : ''}`} onClick={onRefresh} aria-label="Обновить">
             <RefreshIcon />
           </button>
         )}
         {email && (
           <div className="account-menu" ref={menuRef}>
-            <button className="account-menu-trigger" onClick={() => setMenuOpen((v) => !v)}>
+            <button className="account-menu-trigger press" onClick={() => setMenuOpen((v) => !v)}>
               <span className="account-menu-avatar">
                 {picture ? <img src={picture} alt="" referrerPolicy="no-referrer" /> : email[0]?.toUpperCase()}
               </span>
@@ -121,7 +132,7 @@ function Header() {
               <div className="account-menu-dropdown">
                 <div className="account-menu-dropdown-email">{email}</div>
                 {logoutError && <div className="account-menu-dropdown-error">{logoutError}</div>}
-                <button className="account-menu-dropdown-logout" onClick={handleLogout} disabled={loggingOut}>
+                <button className="account-menu-dropdown-logout press" onClick={handleLogout} disabled={loggingOut}>
                   Выйти
                 </button>
               </div>
@@ -166,7 +177,7 @@ function TelegramLinkBanner() {
       <span>
         <BellIcon /> Подключи Telegram, чтобы получать уведомления о лучших тендерах сразу
       </span>
-      <button onClick={handleLink}>Подключить</button>
+      <button className="press" onClick={handleLink}>Подключить</button>
     </div>
   );
 }

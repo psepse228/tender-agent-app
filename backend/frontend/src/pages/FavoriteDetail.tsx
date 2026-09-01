@@ -69,7 +69,7 @@ export default function FavoriteDetail() {
     // which tab happens to be open.
     <div className="chat-screen">
       <div className="fav-detail-header">
-        <button className="fav-chat-back" onClick={() => navigate('/favorites')}>
+        <button className="fav-chat-back press" onClick={() => navigate('/favorites')}>
           <ArrowLeftIcon /> Назад к чатам
         </button>
         <div className="fav-detail-title">{favorite.title || 'Без названия'}</div>
@@ -77,10 +77,10 @@ export default function FavoriteDetail() {
       </div>
 
       <div className="detail-tabs">
-        <button className={`detail-tab${tab === 'stats' ? ' active' : ''}`} onClick={() => setTab('stats')}>
+        <button className={`detail-tab press${tab === 'stats' ? ' active' : ''}`} onClick={() => setTab('stats')}>
           Статистика
         </button>
-        <button className={`detail-tab ai-tab${tab === 'chat' ? ' active' : ''}`} onClick={() => setTab('chat')}>
+        <button className={`detail-tab ai-tab press${tab === 'chat' ? ' active' : ''}`} onClick={() => setTab('chat')}>
           <SparkleIcon /> Tender AI
         </button>
       </div>

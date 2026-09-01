@@ -46,7 +46,7 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
             }}
           >
             <div className="sheet-handle" />
-            <button className="sheet-close-btn" onClick={onClose} title="Закрыть" aria-label="Закрыть">
+            <button className="sheet-close-btn press" onClick={onClose} title="Закрыть" aria-label="Закрыть">
               <CloseIcon />
             </button>
             <div className="sheet-body">{children}</div>
