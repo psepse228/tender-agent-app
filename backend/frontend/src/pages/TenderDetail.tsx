@@ -7,7 +7,7 @@ import { chatErrorMessage, daysUntilDeadline, formatDeadline, scoreTone } from '
 import { useFavorites } from '../lib/favorites';
 import { useTenders } from '../lib/tenders';
 import { useToast } from '../lib/toast';
-import { TenderStats, useFavoriteAction } from '../components/TenderStats';
+import { TenderActions, TenderStats, useFavoriteAction } from '../components/TenderStats';
 import { ChatPanel } from '../components/ChatPanel';
 import { ArrowLeftIcon, BuildingIcon, ChevronRightIcon, ClockIcon, SparkleIcon } from '../components/icons';
 
@@ -150,21 +150,24 @@ export default function TenderDetail() {
       </div>
 
       {tab === 'overview' && (
-        <div className="sheet-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 16px 40px' }}>
-          {days !== null && (
-            <div className="timeline-row">
-              <ClockIcon />
-              {days < 0 ? 'Срок подачи истёк' : days === 0 ? 'Дедлайн сегодня' : `Осталось ${days} дн. до ${formatDeadline(tender.deadline)}`}
-            </div>
-          )}
-          <TenderStats
+        <>
+          <div className="sheet-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 16px 12px' }}>
+            {days !== null && (
+              <div className="timeline-row">
+                <ClockIcon />
+                {days < 0 ? 'Срок подачи истёк' : days === 0 ? 'Дедлайн сегодня' : `Осталось ${days} дн. до ${formatDeadline(tender.deadline)}`}
+              </div>
+            )}
+            <TenderStats tender={tender} />
+          </div>
+          <TenderActions
             tender={tender}
             isFavorite={!!favoriteId}
             favoriteBusy={addAction.busy || removeAction.busy}
             onAddFavorite={addAction.run}
             onRemoveFavorite={removeAction.run}
           />
-        </div>
+        </>
       )}
 
       {tab === 'similar' && (

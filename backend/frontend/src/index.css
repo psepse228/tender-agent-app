@@ -599,6 +599,10 @@ button { font: inherit; }
   letter-spacing: -.02em; line-height: 1.35; color: var(--white); margin-bottom: 4px;
 }
 .sheet-org { font-size: 12px; color: var(--silver); font-weight: 300; }
+.verdict-line { display: flex; align-items: center; gap: 5px; font-family: var(--fd); font-size: 13px; font-weight: 800; margin-top: 6px; }
+.verdict-line.high { color: var(--green); }
+.verdict-line.mid  { color: var(--yellow); }
+.verdict-line.low  { color: var(--red); }
 
 .sheet-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
 .sheet-meta-tag {
@@ -619,6 +623,7 @@ button { font: inherit; }
 }
 .criterion-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
 .criterion-name { font-size: 9px; color: rgba(148,163,184,.5); text-transform: uppercase; letter-spacing: .1em; font-weight: 400; }
+.criterion-weight { color: rgba(148,163,184,.3); letter-spacing: 0; text-transform: none; }
 .criterion-val  { font-size: 14px; font-weight: 800; font-family: var(--fd); }
 .criterion-track { height: 2px; background: rgba(255,255,255,.06); border-radius: 1px; overflow: hidden; }
 .criterion-fill  { height: 100%; border-radius: 1px; }
@@ -626,13 +631,15 @@ button { font: inherit; }
 /* ai blocks */
 .sheet-sections { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
 .ai-block { border: 1px solid; border-radius: 13px; padding: 13px; }
-.ai-block.why  { border-color: rgba(34,197,94,.25);  background: rgba(34,197,94,.07); }
+/* Only risk gets a "pay attention" color -- why-participate and the
+   action plan are supporting context, not warnings, so they read as
+   calm/neutral glass instead of competing with risk for the same
+   urgency (three saturated colors on one screen diluted all three). */
+.ai-block.neutral { border-color: var(--glass-border-soft); background: rgba(255,255,255,.04); }
 .ai-block.risk { border-color: rgba(245,158,11,.25); background: rgba(245,158,11,.07); }
-.ai-block.plan { border-color: rgba(56,189,248,.25); background: rgba(56,189,248,.07); }
 .ai-block-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .15em; margin-bottom: 7px; display: flex; align-items: center; gap: 5px; }
-.ai-block.why  .ai-block-label { color: var(--green); }
+.ai-block.neutral .ai-block-label { color: rgba(148,163,184,.7); }
 .ai-block.risk .ai-block-label { color: var(--yellow); }
-.ai-block.plan .ai-block-label { color: var(--cyan); }
 .ai-block-text { font-size: 12px; line-height: 1.7; color: rgba(241,245,249,.6); font-weight: 300; white-space: pre-wrap; }
 
 /* badges row */
@@ -643,6 +650,18 @@ button { font: inherit; }
 .badge-skip    { background: rgba(239,68,68,.07);  color: var(--red);    border-color: rgba(239,68,68,.22); }
 .badge-risk    { background: rgba(255,255,255,.04); color: var(--silver); border-color: var(--border); }
 .badge-profit  { background: rgba(255,255,255,.04); color: var(--silver); border-color: var(--border); }
+
+/* Pinned outside the scrolling content (see TenderDetail.tsx / TenderActions)
+   so the two decisions this page exists to support stay in reach
+   regardless of how far someone has scrolled through the analysis. */
+.detail-actions-bar {
+  flex-shrink: 0; display: flex; gap: 8px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--glass-border-soft);
+  background: var(--glass);
+}
+.detail-actions-bar .open-tender-btn,
+.detail-actions-bar .favorite-btn { width: auto; flex: 1; margin-top: 0; }
 
 .open-tender-btn {
   width: 100%; padding: 14px;
