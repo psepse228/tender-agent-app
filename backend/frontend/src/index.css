@@ -164,6 +164,7 @@ button { font: inherit; }
 .header-right { display: flex; align-items: center; gap: 8px; }
 .last-update { font-size: 11px; color: var(--silver); font-weight: 300; }
 .refresh-btn {
+  position: relative;
   width: 32px; height: 32px; border-radius: 9px;
   background: var(--cyan-d); border: 1px solid var(--border-c);
   color: var(--cyan); font-size: 15px;
@@ -171,18 +172,21 @@ button { font: inherit; }
   cursor: pointer; transition: background .2s, transform .2s;
 }
 .refresh-btn:active { background: rgba(56,189,248,.18); transform: scale(.9); }
+.refresh-btn::after { content: ''; position: absolute; inset: -6px; }
 .refresh-btn.spinning svg { animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ─── ACCOUNT MENU ─── */
 .account-menu { position: relative; }
 .account-menu-trigger {
+  position: relative;
   display: flex; align-items: center; gap: 6px;
   background: rgba(255,255,255,.03); border: 1px solid var(--border);
   border-radius: 100px; padding: 4px 10px 4px 4px; cursor: pointer;
   transition: background .18s, border-color .18s;
 }
 .account-menu-trigger:active { background: rgba(255,255,255,.06); }
+.account-menu-trigger::after { content: ''; position: absolute; inset: -6px; }
 .account-menu-avatar {
   width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
   background: var(--grad); color: var(--bg);
@@ -424,6 +428,11 @@ button { font: inherit; }
 
 /* "Add to Tender AI" quick action (card + sheet) */
 .card-fav-btn {
+  /* Visual size stays compact (this sits inline in a tight card row), but
+     the real tappable area is expanded to the ~44px minimum via ::after
+     rather than growing the box itself -- same technique iOS HIG endorses
+     for exactly this "small control, generous hit area" case. */
+  position: relative;
   flex-shrink: 0; height: 30px; padding: 0 9px; border-radius: 9px;
   background: rgba(129,140,248,.06); border: 1px solid rgba(129,140,248,.22);
   color: rgba(199,210,254,.75); font-family: var(--fd); font-size: 10px; font-weight: 800;
@@ -432,6 +441,7 @@ button { font: inherit; }
   transition: background .18s, color .18s, transform .18s, border-color .18s;
 }
 .card-fav-btn:active { transform: scale(.88); }
+.card-fav-btn::after { content: ''; position: absolute; inset: -7px; }
 .card-fav-btn.active { color: var(--bg); border-color: transparent; background: var(--grad); }
 
 .favorite-btn {
@@ -458,10 +468,12 @@ button { font: inherit; }
 .source-item-name { font-family: var(--fd); font-size: 13px; font-weight: 700; color: var(--white); }
 .source-item-url { font-size: 11px; color: rgba(148,163,184,.55); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .source-item-remove {
+  position: relative;
   flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px;
   background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.22);
   color: var(--red); cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
+.source-item-remove::after { content: ''; position: absolute; inset: -7px; }
 
 .fav-chat-back {
   background: none; border: none; color: var(--cyan); font-family: var(--fb);
@@ -527,6 +539,16 @@ button { font: inherit; }
 .tag-consider{ color: var(--yellow); border-color: rgba(245,158,11,.28); background: rgba(245,158,11,.07); }
 .tag-skip    { color: var(--red);    border-color: rgba(239,68,68,.25);  background: rgba(239,68,68,.06); }
 .tag-meta    { color: rgba(148,163,184,.55); border-color: rgba(255,255,255,.08); background: rgba(255,255,255,.03); }
+/* The feed's one "peak" moment (mobile-design skill) -- a rare, standout
+   match (90%+, "Подать заявку") gets a distinct brand-gradient tag and a
+   quiet glow on the card itself, instead of just being slightly-more-green
+   like every other high scorer. */
+.tag-best {
+  color: var(--bg); border-color: transparent; background: var(--grad); font-weight: 800;
+}
+.card.best-match {
+  box-shadow: var(--glass-shadow), 0 0 0 1px rgba(56,189,248,.3), 0 0 28px -8px rgba(129,140,248,.55);
+}
 
 .card-chevron { flex-shrink: 0; color: rgba(255,255,255,.18); display: flex; margin-left: 2px; }
 

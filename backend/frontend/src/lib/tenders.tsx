@@ -7,7 +7,7 @@ interface TendersState {
   loading: boolean;
   loaded: boolean;
   needsProfile: boolean;
-  refresh: () => Promise<{ found: number; failed: string[] } | null>;
+  refresh: () => Promise<{ found: number; strongMatches: number; failed: string[] } | null>;
   /** Other tenders from the same organization, currently loaded -- powers
    * "Похожие тендеры этого заказчика" on the tender detail page. Purely
    * client-side (cross-referencing tenders already fetched), not a new
@@ -52,7 +52,8 @@ export function TendersProvider({ children }: { children: ReactNode }) {
     const { tenders: fresh, sourcesStatus } = await api.refreshTenders();
     const failed = sourcesStatus.filter((s) => s.status === 'failed').map((s) => s.name);
     if (fresh.length > 0) setTenders(fresh);
-    return { found: fresh.length, failed };
+    const strongMatches = fresh.filter((t) => (t.matchPercent || 0) >= 90 && (t.recommendation || '').includes('Подать')).length;
+    return { found: fresh.length, strongMatches, failed };
   }, []);
 
   const fromSameOrg = useCallback(

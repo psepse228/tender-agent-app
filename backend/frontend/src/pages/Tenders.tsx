@@ -51,7 +51,19 @@ export default function Tenders() {
       const result = await refresh();
       if (!result) return;
       const suffix = result.failed.length ? ` · ${result.failed.join(', ')} ${result.failed.length > 1 ? 'недоступны' : 'недоступен'}` : '';
-      showToast(result.found > 0 ? `Найдено ${result.found} тендеров${suffix}` : `Новых тендеров не найдено${suffix}`);
+      // The refresh's ending message is the last thing this action leaves
+      // behind (peak-end) -- a plain count reads the same whether the
+      // batch was great or mediocre, so it says what's actually in it
+      // when there's something worth saying.
+      let message: string;
+      if (result.found === 0) {
+        message = `Новых тендеров не найдено${suffix}`;
+      } else if (result.strongMatches > 0) {
+        message = `Найдено ${result.found} тендеров, из них ${result.strongMatches} с высоким совпадением${suffix}`;
+      } else {
+        message = `Найдено ${result.found} тендеров${suffix}`;
+      }
+      showToast(message);
     } catch (e) {
       showToast(e instanceof ApiError && e.status === 429 ? 'Обновлялось недавно, попробуй чуть позже' : 'Ошибка при обновлении');
     } finally {
@@ -91,6 +103,17 @@ export default function Tenders() {
 
   const avg = tenders.length ? Math.round(tenders.reduce((s, t) => s + (t.matchPercent || 0), 0) / tenders.length) : 0;
   const submitCount = tenders.filter((t) => (t.recommendation || '').includes('Подать')).length;
+
+  // The one "peak" moment on this screen (see the mobile-design skill's
+  // peak-end principle) -- a single standout match reads as a moment
+  // worth noticing; marking every high scorer the same way would just be
+  // more of the same green. Threshold is deliberately high (90%+, still
+  // "Подать заявку") so this stays rare enough to mean something.
+  const bestId = useMemo(() => {
+    const candidates = tenders.filter((t) => (t.matchPercent || 0) >= 90 && (t.recommendation || '').includes('Подать'));
+    if (!candidates.length) return null;
+    return candidates.reduce((best, t) => ((t.matchPercent || 0) > (best.matchPercent || 0) ? t : best)).id;
+  }, [tenders]);
 
   async function handleToggleFavorite(t: Tender, favoriteId: string | undefined) {
     try {
@@ -187,13 +210,14 @@ export default function Tenders() {
               {group.items.map((t) => {
                 const tone = scoreTone(t.matchPercent || 0);
                 const fav = favorites.findFor(t);
+                const isBest = t.id === bestId;
                 const i = cardIndex++;
                 return (
                   <motion.div
                     key={t.id}
                     role="button"
                     tabIndex={0}
-                    className={`card ${tone}`}
+                    className={`card ${tone}${isBest ? ' best-match' : ''}`}
                     onClick={() => navigate(`/tenders/${t.id}`)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') navigate(`/tenders/${t.id}`);
@@ -208,6 +232,7 @@ export default function Tenders() {
                         <div className="card-title">{t.title || 'Без названия'}</div>
                         <div className="card-org">{t.organization || '—'}</div>
                         <div className="card-tags">
+                          {isBest && <span className="tag tag-best">Точное совпадение</span>}
                           <span className={`tag ${recTagClass(t)}`}>{recTagLabel(t)}</span>
                           {t.budget && (
                             <span className="tag tag-meta">
