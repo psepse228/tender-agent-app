@@ -6,13 +6,16 @@ import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
 import { useRefreshControl } from '../lib/refreshControl';
 import { getInitData } from '../lib/telegram';
-import { BellIcon, ChevronDownIcon, DiamondIcon, LinkIcon, PauseIcon, RefreshIcon, SparkleIcon, ZapIcon } from './icons';
+import { BellIcon, ChevronDownIcon, PauseIcon, RefreshIcon, SparkleIcon, UserIcon, ZapIcon } from './icons';
 
+// Скаут AI (company profile setup) and Источники used to each hold their
+// own permanent bottom-nav slot even though both are one-time/low-
+// frequency setup tasks, not something opened daily like Тендеры/Пакет --
+// both now live as sub-sections of Профиль instead. See the IA proposal.
 const NAV_TABS = [
   { to: '/', label: 'Тендеры', icon: ZapIcon, end: true },
-  { to: '/favorites', label: 'Ваш пакет', icon: SparkleIcon, end: false },
-  { to: '/scout', label: 'Скаут AI', icon: DiamondIcon, end: false },
-  { to: '/sources', label: 'Источники', icon: LinkIcon, end: false },
+  { to: '/favorites', label: 'Пакет', icon: SparkleIcon, end: false },
+  { to: '/profile', label: 'Профиль', icon: UserIcon, end: false },
 ];
 
 // Everything below the header/banner lives inside one flex column

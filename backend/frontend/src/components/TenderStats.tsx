@@ -161,11 +161,11 @@ export function TenderStats({ tender: t, isFavorite, favoriteBusy, onAddFavorite
 
       {isFavorite ? (
         <button className="favorite-btn remove press" onClick={onRemoveFavorite} disabled={favoriteBusy}>
-          <XCircleIcon /> Убрать из Tender AI
+          <XCircleIcon /> Убрать из Пакета
         </button>
       ) : (
         <button className="favorite-btn press" onClick={onAddFavorite} disabled={favoriteBusy}>
-          <SparkleIcon /> Добавить в Tender AI
+          <SparkleIcon /> Добавить в Пакет
         </button>
       )}
     </>
@@ -174,7 +174,7 @@ export function TenderStats({ tender: t, isFavorite, favoriteBusy, onAddFavorite
 
 /** Local busy flag so a slow add/remove request can't be fired twice from
  * the same panel while still letting the parent own the actual favorite
- * state (Tenders/FavoriteDetail each wire this to their own context call). */
+ * state (TenderDetail wires this to its own context calls). */
 export function useFavoriteAction(action: () => Promise<void>) {
   const [busy, setBusy] = useState(false);
   return {
