@@ -6,7 +6,7 @@ import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
 import { useRefreshControl } from '../lib/refreshControl';
 import { getInitData } from '../lib/telegram';
-import { BellIcon, ChevronDownIcon, PauseIcon, RefreshIcon, SparkleIcon, UserIcon, ZapIcon } from './icons';
+import { ChevronDownIcon, PauseIcon, RefreshIcon, SparkleIcon, UserIcon, ZapIcon } from './icons';
 
 // Скаут AI (company profile setup) and Источники used to each hold their
 // own permanent bottom-nav slot even though both are one-time/low-
@@ -44,12 +44,13 @@ export default function Layout() {
     screenRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
 
+  useAutoLinkTelegram();
+
   return (
     <div className="app-shell">
       <div className="ambient" />
       <SuspendedOverlay />
       <Header />
-      <TelegramLinkBanner />
       <div className="screen" ref={screenRef}>
         <AnimatePresence initial={false}>
           <motion.div
@@ -147,42 +148,29 @@ function Header() {
   );
 }
 
-function TelegramLinkBanner() {
-  const [show, setShow] = useState(false);
+/** Silently links this Telegram identity the moment the Mini App is opened
+ * from inside Telegram, instead of showing a banner asking the person to
+ * click "Подключить" -- if they're already inside the Telegram Mini App,
+ * asking them to "connect Telegram" reads as nonsensical, and there's
+ * nothing to actually confirm: initData is already a verified Telegram
+ * identity (see /api/link-telegram's HMAC check), linking it doesn't
+ * change what the app does or asks for, it just gives
+ * notify_high_scoring_tenders (backend) somewhere to deliver an alert the
+ * moment a strong match is found. No UI, no toast on success -- only
+ * surfaces if it genuinely fails, and even then just once. */
+function useAutoLinkTelegram() {
   const { showToast } = useToast();
-
   useEffect(() => {
-    // Only relevant when actually opened inside Telegram -- a plain browser
-    // session has no Telegram identity to offer linking at all.
     const initData = getInitData();
     if (!initData) return;
     api
       .getTelegramLinkStatus()
-      .then((status) => setShow(!status.linked))
-      .catch(() => {}); // best-effort
+      .then((status) => {
+        if (!status.linked) return api.linkTelegram(initData);
+      })
+      .catch(() => showToast('Не удалось подключить Telegram для уведомлений'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function handleLink() {
-    const initData = getInitData();
-    if (!initData) return;
-    try {
-      await api.linkTelegram(initData);
-      setShow(false);
-      showToast('Telegram подключён для уведомлений');
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Не удалось подключить Telegram');
-    }
-  }
-
-  if (!show) return null;
-  return (
-    <div className="telegram-link-banner">
-      <span>
-        <BellIcon /> Подключи Telegram, чтобы получать уведомления о лучших тендерах сразу
-      </span>
-      <button className="press" onClick={handleLink}>Подключить</button>
-    </div>
-  );
 }
 
 function SuspendedOverlay() {

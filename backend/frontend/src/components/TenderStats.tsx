@@ -1,60 +1,41 @@
-// Shared "stats" markup -- used by both the Тендеры bottom sheet and the
-// Ваш пакет detail screen's Статистика tab (mirrors renderStatsHtml() in
-// the old vanilla frontend).
+// Shared "stats" markup for the tender detail page's Обзор tab. Split into
+// content (this) + a separately-pinned TenderActions footer (see below) --
+// the decision buttons used to be the last thing at the bottom of a long
+// scroll, behind the score/criteria/AI-analysis text, which put them
+// outside the thumb zone exactly when someone had already read enough to
+// decide. Now they're always reachable without scrolling.
 import { useState } from 'react';
 import type { Tender } from '../lib/types';
-import { criterionColor, formatDeadline, scoreTone } from '../lib/format';
+import { criterionColor, formatDeadline, recommendationTone, scoreTone } from '../lib/format';
 import { openLink } from '../lib/telegram';
-import {
-  AlertTriangleIcon,
-  ArrowRightIcon,
-  CalendarIcon,
-  CheckIcon,
-  LinkIcon,
-  SparkleIcon,
-  WalletIcon,
-  XCircleIcon,
-} from './icons';
+import { AlertTriangleIcon, ArrowRightIcon, CalendarIcon, CheckIcon, LinkIcon, SparkleIcon, WalletIcon, XCircleIcon } from './icons';
 
-function RecommendationBadge({ recommendation }: { recommendation: string | undefined }) {
-  if (!recommendation) return null;
-  if (recommendation.includes('Подать'))
-    return (
-      <span className="badge badge-submit">
-        <CheckIcon /> Подать заявку
-      </span>
-    );
-  if (recommendation.includes('Рассмотреть'))
-    return (
-      <span className="badge badge-consider">
-        <SparkleIcon /> Рассмотреть
-      </span>
-    );
+const CRITERIA_META = [
+  { key: 'compliance' as const, name: 'Соответствие', weight: '×0.4' },
+  { key: 'financial' as const, name: 'Финансы', weight: '×0.2' },
+  { key: 'feasibility' as const, name: 'Реализация', weight: '×0.25' },
+  { key: 'winChance' as const, name: 'Шанс победы', weight: '×0.15' },
+];
+
+function VerdictLine({ recommendation }: { recommendation: string | undefined }) {
+  const tone = recommendationTone(recommendation);
+  const Icon = tone === 'submit' ? CheckIcon : tone === 'consider' ? SparkleIcon : XCircleIcon;
+  const label = tone === 'submit' ? 'Подать заявку' : tone === 'consider' ? 'Рассмотреть' : 'Пропустить';
+  const cls = tone === 'submit' ? 'high' : tone === 'consider' ? 'mid' : 'low';
   return (
-    <span className="badge badge-skip">
-      <XCircleIcon /> Пропустить
-    </span>
+    <div className={`verdict-line ${cls}`}>
+      <Icon /> {label}
+    </div>
   );
 }
 
 interface TenderStatsProps {
   tender: Tender;
-  isFavorite: boolean;
-  favoriteBusy?: boolean;
-  onAddFavorite?: () => void;
-  onRemoveFavorite?: () => void;
 }
 
-export function TenderStats({ tender: t, isFavorite, favoriteBusy, onAddFavorite, onRemoveFavorite }: TenderStatsProps) {
+export function TenderStats({ tender: t }: TenderStatsProps) {
   const pct = t.matchPercent || 0;
   const tone = scoreTone(pct);
-  const fullSource = t.source && t.source.startsWith('http') ? t.source : '';
-  const criteria = [
-    { name: 'Соответствие', val: t.compliance || 0 },
-    { name: 'Финансы', val: t.financial || 0 },
-    { name: 'Реализация', val: t.feasibility || 0 },
-    { name: 'Шанс победы', val: t.winChance || 0 },
-  ];
 
   return (
     <>
@@ -65,6 +46,11 @@ export function TenderStats({ tender: t, isFavorite, favoriteBusy, onAddFavorite
         <div>
           <div className="sheet-title">{t.title || ''}</div>
           <div className="sheet-org">{t.organization || ''}</div>
+          {/* The one fact this whole screen exists to deliver -- promoted
+              next to the score instead of buried as a small badge below
+              the fold, and shown once instead of duplicated as both a tag
+              and a badge the way it used to be. */}
+          <VerdictLine recommendation={t.recommendation} />
         </div>
       </div>
 
@@ -84,18 +70,21 @@ export function TenderStats({ tender: t, isFavorite, favoriteBusy, onAddFavorite
       )}
 
       <div className="sheet-criteria">
-        {criteria.map((c) => {
-          const col = criterionColor(c.val);
+        {CRITERIA_META.map((c) => {
+          const val = t[c.key] || 0;
+          const col = criterionColor(val);
           return (
-            <div className="criterion" key={c.name}>
+            <div className="criterion" key={c.key}>
               <div className="criterion-top">
-                <span className="criterion-name">{c.name}</span>
+                <span className="criterion-name">
+                  {c.name} <span className="criterion-weight">{c.weight}</span>
+                </span>
                 <span className="criterion-val" style={{ color: col }}>
-                  {c.val}%
+                  {val}%
                 </span>
               </div>
               <div className="criterion-track">
-                <div className="criterion-fill" style={{ width: `${c.val}%`, background: col }} />
+                <div className="criterion-fill" style={{ width: `${val}%`, background: col }} />
               </div>
             </div>
           );
@@ -103,8 +92,13 @@ export function TenderStats({ tender: t, isFavorite, favoriteBusy, onAddFavorite
       </div>
 
       <div className="sheet-sections">
+        {/* Risk is the one block that genuinely needs a "pay attention"
+            color -- why-participate and the action plan are supporting
+            context, not warnings, so they read as calmer/neutral now
+            instead of competing with risk for the same visual urgency
+            (three saturated colors on one screen was diluting all three). */}
         {t.whyParticipate && (
-          <div className="ai-block why">
+          <div className="ai-block neutral">
             <div className="ai-block-label">
               <CheckIcon /> Почему участвовать
             </div>
@@ -120,7 +114,7 @@ export function TenderStats({ tender: t, isFavorite, favoriteBusy, onAddFavorite
           </div>
         )}
         {t.actionPlan && (
-          <div className="ai-block plan">
+          <div className="ai-block neutral">
             <div className="ai-block-label">
               <ArrowRightIcon /> План действий
             </div>
@@ -128,29 +122,48 @@ export function TenderStats({ tender: t, isFavorite, favoriteBusy, onAddFavorite
           </div>
         )}
         {!t.whyParticipate && !t.risks && !t.actionPlan && t.reasoning && (
-          <div className="ai-block plan">
+          <div className="ai-block neutral">
             <div className="ai-block-label">AI Анализ</div>
             <div className="ai-block-text">{t.reasoning}</div>
           </div>
         )}
       </div>
 
-      <div className="sheet-badges">
-        <RecommendationBadge recommendation={t.recommendation} />
-        {t.riskLevel && (
-          <span className="badge badge-risk">
-            <AlertTriangleIcon /> {t.riskLevel}
-          </span>
-        )}
-        {t.profitPotential && (
-          <span className="badge badge-profit">
-            <ArrowRightIcon /> {t.profitPotential}
-          </span>
-        )}
-      </div>
+      {(t.riskLevel || t.profitPotential) && (
+        <div className="sheet-badges">
+          {t.riskLevel && (
+            <span className="badge badge-risk">
+              <AlertTriangleIcon /> {t.riskLevel}
+            </span>
+          )}
+          {t.profitPotential && (
+            <span className="badge badge-profit">
+              <ArrowRightIcon /> {t.profitPotential}
+            </span>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
 
+interface TenderActionsProps {
+  tender: Tender;
+  isFavorite: boolean;
+  favoriteBusy?: boolean;
+  onAddFavorite?: () => void;
+  onRemoveFavorite?: () => void;
+}
+
+/** The two decisions this whole page exists to support -- pinned outside
+ * the scrolling content (see TenderDetail.tsx) so they're reachable from
+ * anywhere in the read, not just after scrolling past everything else. */
+export function TenderActions({ tender: t, isFavorite, favoriteBusy, onAddFavorite, onRemoveFavorite }: TenderActionsProps) {
+  const fullSource = t.source && t.source.startsWith('http') ? t.source : '';
+  return (
+    <div className="detail-actions-bar">
       {fullSource ? (
-        <button className="open-tender-btn" onClick={() => openLink(fullSource)}>
+        <button className="open-tender-btn press" onClick={() => openLink(fullSource)}>
           <LinkIcon /> Открыть тендер
         </button>
       ) : (
@@ -161,14 +174,14 @@ export function TenderStats({ tender: t, isFavorite, favoriteBusy, onAddFavorite
 
       {isFavorite ? (
         <button className="favorite-btn remove press" onClick={onRemoveFavorite} disabled={favoriteBusy}>
-          <XCircleIcon /> Убрать из Пакета
+          <XCircleIcon /> Убрать
         </button>
       ) : (
         <button className="favorite-btn press" onClick={onAddFavorite} disabled={favoriteBusy}>
-          <SparkleIcon /> Добавить в Пакет
+          <SparkleIcon /> В пакет
         </button>
       )}
-    </>
+    </div>
   );
 }
 
