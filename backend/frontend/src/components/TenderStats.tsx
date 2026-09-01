@@ -44,9 +44,14 @@ export function TenderStats({ tender: t }: TenderStatsProps) {
           <div className={`sheet-score-num ${tone}`}>{pct}</div>
         </div>
         <div>
-          <div className="sheet-title">{t.title || ''}</div>
-          <div className="sheet-org">{t.organization || ''}</div>
-          {/* The one fact this whole screen exists to deliver -- promoted
+          {/* Title/org already live in the page's own header (fav-detail-
+              title/org) -- repeating them here just ate the little vertical
+              room this panel has, wrapping across 2-3 extra lines on a long
+              title and pushing everything else (criteria, AI analysis)
+              below the fold before a real Telegram viewport (which has its
+              own native header shaving off more height than any emulator
+              accounted for) even shows the score's own verdict.
+              The one fact this whole screen exists to deliver -- promoted
               next to the score instead of buried as a small badge below
               the fold, and shown once instead of duplicated as both a tag
               and a badge the way it used to be. */}
