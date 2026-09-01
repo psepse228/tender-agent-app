@@ -51,7 +51,7 @@ export function ChatPanel({ messages, placeholderMessage, inputPlaceholder, send
             if (e.key === 'Enter') handleSend();
           }}
         />
-        <button className="chat-send-btn" onClick={handleSend} disabled={sending || !value.trim()}>
+        <button className="chat-send-btn press" onClick={handleSend} disabled={sending || !value.trim()}>
           <ArrowRightIcon />
         </button>
       </div>

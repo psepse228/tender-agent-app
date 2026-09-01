@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFavorites } from '../lib/favorites';
 import { pluralTenders, scoreTone } from '../lib/format';
@@ -38,10 +39,17 @@ export default function Favorites() {
             </div>
           </div>
         ) : (
-          favorites.map((f) => {
+          favorites.map((f, i) => {
             const tone = scoreTone(f.matchPercent || 0);
             return (
-              <div key={f.id} role="button" tabIndex={0} className="chat-list-item" onClick={() => navigate(`/favorites/${f.id}`)}>
+              <div
+                key={f.id}
+                role="button"
+                tabIndex={0}
+                className="chat-list-item stagger-item"
+                style={{ '--i': i } as CSSProperties}
+                onClick={() => navigate(`/favorites/${f.id}`)}
+              >
                 <div className={`chat-list-avatar ${tone}`}>{f.matchPercent || 0}</div>
                 <div className="chat-list-body">
                   <div className="chat-list-name">{f.title || 'Без названия'}</div>

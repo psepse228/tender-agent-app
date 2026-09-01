@@ -6,7 +6,7 @@ export default function Methodology() {
   return (
     <>
       <div className="fav-detail-header">
-        <button className="fav-chat-back" onClick={() => navigate(-1)}>
+        <button className="fav-chat-back press" onClick={() => navigate(-1)}>
           <ArrowLeftIcon /> Назад
         </button>
         <div className="fav-detail-title">Как ИИ оценивает тендеры</div>

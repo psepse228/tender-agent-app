@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as api from '../lib/api';
@@ -11,6 +11,7 @@ import { useRegisterRefreshControl } from '../lib/refreshControl';
 import { BottomSheet } from '../components/BottomSheet';
 import { TenderStats, useFavoriteAction } from '../components/TenderStats';
 import { SkeletonCards, SkeletonStat } from '../components/Skeleton';
+import { CountUp } from '../components/CountUp';
 import { CalendarIcon, ChevronRightIcon, InfoIcon, SparkleIcon, TargetIcon, WalletIcon } from '../components/icons';
 
 type Filter = 'all' | 'high' | 'submit' | 'consider';
@@ -161,7 +162,7 @@ export default function Tenders() {
       <div className="dashboard">
         <div className="dash-eyebrow">
           Обзор · сегодня
-          <button className="dash-eyebrow-link" onClick={() => navigate('/methodology')}>
+          <button className="dash-eyebrow-link press" onClick={() => navigate('/methodology')}>
             <InfoIcon /> Как считается
           </button>
         </div>
@@ -174,16 +175,16 @@ export default function Tenders() {
             </>
           ) : (
             <>
-              <div className="dash-stat accent">
-                <div className="dash-num plain">{tenders.length}</div>
+              <div className="dash-stat accent stagger-item" style={{ '--i': 0 } as CSSProperties}>
+                <CountUp value={tenders.length} className="dash-num plain" />
                 <div className="dash-label2">Найдено</div>
               </div>
-              <div className="dash-stat">
-                <div className="dash-num green-num">{submitCount}</div>
+              <div className="dash-stat stagger-item" style={{ '--i': 1 } as CSSProperties}>
+                <CountUp value={submitCount} className="dash-num green-num" />
                 <div className="dash-label2">К подаче</div>
               </div>
-              <div className="dash-stat">
-                <div className="dash-num">{avg}%</div>
+              <div className="dash-stat stagger-item" style={{ '--i': 2 } as CSSProperties}>
+                <CountUp value={avg} suffix="%" className="dash-num" />
                 <div className="dash-label2">Ср. балл</div>
               </div>
             </>
@@ -194,7 +195,7 @@ export default function Tenders() {
       <div className="filters-wrap">
         <div className="filters">
           {FILTERS.map((f) => (
-            <button key={f.key} className={`filter-btn${filter === f.key ? ' active' : ''}`} onClick={() => setFilter(f.key)}>
+            <button key={f.key} className={`filter-btn press${filter === f.key ? ' active' : ''}`} onClick={() => setFilter(f.key)}>
               {f.label}
             </button>
           ))}
@@ -211,7 +212,7 @@ export default function Tenders() {
               <TargetIcon />
             </div>
             {needsProfile && tenders.length === 0 ? (
-              <button className="empty-action empty-text" onClick={() => navigate('/scout')}>
+              <button className="empty-action empty-text press" onClick={() => navigate('/scout')}>
                 {NUDGE_EMPTY_TEXT}
               </button>
             ) : (
@@ -257,7 +258,7 @@ export default function Tenders() {
                   </div>
                   <button
                     type="button"
-                    className={`card-fav-btn${fav ? ' active' : ''}`}
+                    className={`card-fav-btn press${fav ? ' active' : ''}`}
                     title={fav ? 'Убрать из Tender AI' : 'Добавить в Tender AI'}
                     onClick={(e) => {
                       e.stopPropagation();

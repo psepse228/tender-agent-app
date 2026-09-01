@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import * as api from '../lib/api';
 import type { Source } from '../lib/types';
 import { useToast } from '../lib/toast';
@@ -83,7 +83,7 @@ export default function Sources() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
         />
-        <button className="favorite-btn" style={{ marginTop: 10 }} onClick={handleAdd} disabled={adding}>
+        <button className="favorite-btn press" style={{ marginTop: 10 }} onClick={handleAdd} disabled={adding}>
           + Добавить источник
         </button>
       </div>
@@ -102,13 +102,13 @@ export default function Sources() {
               </div>
             </div>
           ) : (
-            sources.map((s) => (
-              <div className="source-item" key={s.id}>
+            sources.map((s, i) => (
+              <div className="source-item stagger-item" style={{ '--i': i } as CSSProperties} key={s.id}>
                 <div className="source-item-info">
                   <div className="source-item-name">{s.name}</div>
                   <div className="source-item-url">{s.url}</div>
                 </div>
-                <button className="source-item-remove" onClick={() => handleRemove(s.id, s.name)}>
+                <button className="source-item-remove press" onClick={() => handleRemove(s.id, s.name)}>
                   <TrashIcon />
                 </button>
               </div>

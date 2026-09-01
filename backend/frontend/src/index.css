@@ -88,6 +88,33 @@ body {
   position: relative;
 }
 
+/* ─── MOTION PRIMITIVES ───
+   Same small reusable set Argus and TD Webster share (.press, staggered
+   list entrances, a hover lift, spring-scale on the active state) instead
+   of one-off inline transitions per component -- so the next thing that
+   needs "feels alive" reaches for these rather than reinventing timing. */
+.press { transition: transform .12s cubic-bezier(.34,1.56,.64,1), opacity .12s ease; }
+.press:active { transform: scale(.94); }
+
+@keyframes taIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.stagger-item { animation: taIn .32s cubic-bezier(.2,.7,.3,1) both; animation-delay: calc(var(--i, 0) * 40ms); }
+
+/* Pointer-only hover lift -- guarded so a touchscreen tap doesn't get
+   stuck showing a ":hover" state after the finger lifts. */
+@media (hover: hover) and (pointer: fine) {
+  .card, .chat-list-item, .source-item {
+    transition: transform .18s cubic-bezier(.2,.7,.3,1), border-color .2s, opacity .15s;
+  }
+  .card:hover, .chat-list-item:hover, .source-item:hover { transform: translateY(-2px); border-color: rgba(56,189,248,.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press, .press:active { transition: none; transform: none; }
+  .stagger-item { animation: none; }
+  .card, .chat-list-item, .source-item { transition: none; }
+  .card:hover, .chat-list-item:hover, .source-item:hover { transform: none; }
+}
+
 /* noise overlay */
 body::before {
   content: ''; position: fixed; inset: 0;
@@ -107,29 +134,6 @@ a { text-decoration: none; color: inherit; }
 button { font: inherit; }
 ::-webkit-scrollbar { width: 2px; }
 ::-webkit-scrollbar-thumb { background: rgba(56,189,248,.25); border-radius: 2px; }
-
-/* ─── LOADER ─── */
-#loader {
-  position: fixed; inset: 0; background: var(--bg);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  z-index: 9998; gap: 20px;
-  transition: opacity 0.4s ease;
-}
-#loader.gone { opacity: 0; pointer-events: none; }
-.loader-logo { display: flex; align-items: center; gap: 10px; }
-.loader-mark {
-  width: 38px; height: 38px; border-radius: 22%;
-  background: var(--grad);
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--fd); font-size: 18px; font-weight: 800;
-  color: var(--bg); box-shadow: 0 0 28px rgba(56,189,248,.35);
-}
-.loader-wordmark { font-family: var(--fd); font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
-.loader-sub { font-size: 10px; color: var(--silver); letter-spacing: .2em; text-transform: uppercase; font-weight: 300; }
-.loader-track { width: 120px; height: 2px; background: rgba(255,255,255,.08); border-radius: 1px; overflow: hidden; }
-.loader-fill { height: 100%; background: var(--grad); animation: lprog 1.4s ease-in-out infinite; }
-@keyframes lprog { 0%{width:0%;margin-left:0%} 50%{width:60%;margin-left:20%} 100%{width:0%;margin-left:100%} }
 
 /* ─── HEADER ─── */
 .header {
@@ -746,3 +750,29 @@ button { font: inherit; }
 .suspended-icon { font-size: 32px; margin-bottom: 14px; display: flex; justify-content: center; }
 .suspended-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
 .suspended-text { font-size: 13px; color: rgba(148,163,184,.75); line-height: 1.6; }
+
+/* ─── BOOT SPLASH ─── */
+.boot-splash {
+  position: fixed; inset: 0; z-index: 9998;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+}
+.boot-splash-logo { display: flex; align-items: center; gap: 10px; }
+.boot-splash-mark {
+  width: 40px; height: 40px; border-radius: 22%;
+  background: var(--grad);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--fd); font-size: 19px; font-weight: 800; color: var(--bg);
+}
+.boot-splash-wordmark { font-family: var(--fd); font-size: 21px; font-weight: 800; letter-spacing: -.02em; }
+.boot-splash-sub { font-size: 10px; color: var(--silver); letter-spacing: .2em; text-transform: uppercase; font-weight: 300; }
+.boot-splash-track { width: 120px; height: 2px; background: rgba(255,255,255,.08); border-radius: 1px; overflow: hidden; }
+.boot-splash-fill { width: 50%; height: 100%; background: var(--grad); border-radius: 1px; }
+
+/* ─── NAV ICON POP + PAGE TRANSITIONS ─── */
+.nav-btn-icon { transition: transform .18s cubic-bezier(.34,1.56,.64,1); }
+.nav-btn.active .nav-btn-icon { transform: scale(1.12); }
+@media (prefers-reduced-motion: reduce) {
+  .nav-btn-icon { transition: none; }
+  .nav-btn.active .nav-btn-icon { transform: none; }
+}
