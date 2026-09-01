@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as api from '../lib/api';
 import { useSession } from '../lib/session';
@@ -15,14 +15,39 @@ const NAV_TABS = [
   { to: '/sources', label: 'Источники', icon: LinkIcon, end: false },
 ];
 
+// Everything below the header/banner lives inside one flex column
+// (see .app-shell / .screen in index.css) where `.screen` is the ONLY
+// scrolling region and the bottom nav is a normal (non-fixed) flex child
+// sitting after it -- not position:fixed floating over body-scrolled
+// content. That fixed-over-body-scroll approach is what caused the
+// UI-audit's #1 finding: a `position:fixed` bar unconditionally covers
+// whatever real content happens to render in its screen-space footprint,
+// and a trailing `padding-bottom` on the scrolled container only ever
+// protects the content at the very end of a full scroll -- it does
+// nothing for content sitting at the initial (unscrolled) fold, which is
+// exactly the state every screen loads into. Scoping the scroll to
+// `.screen` itself means content simply never renders behind the nav in
+// the first place, on any screen, in any scroll position.
 export default function Layout() {
+  const screenRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+
+  // Reset the (now screen-scoped, not window) scroll position on every
+  // route change -- react-router doesn't do this itself, and without it a
+  // navigation from a scrolled list (e.g. Ваш пакет) to a detail page
+  // opened with the previous scroll offset still applied, hiding that
+  // page's own header/back-link above the fold (UI-audit #4/#8).
+  useLayoutEffect(() => {
+    screenRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
-    <div>
+    <div className="app-shell">
       <div className="ambient" />
       <SuspendedOverlay />
       <Header />
       <TelegramLinkBanner />
-      <div className="screen">
+      <div className="screen" ref={screenRef}>
         <Outlet />
       </div>
       <BottomNav />

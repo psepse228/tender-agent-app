@@ -30,7 +30,7 @@ export function ChatPanel({ messages, placeholderMessage, inputPlaceholder, send
   }
 
   return (
-    <div className="chat-screen" style={{ minHeight: 'auto', padding: 0 }}>
+    <div className="chat-panel">
       <div className="chat-messages" ref={containerRef}>
         {messages.length === 0 ? (
           <ChatBubble role="bot" content={placeholderMessage} />

@@ -47,7 +47,8 @@ export default function Sources() {
     }
   }
 
-  async function handleRemove(id: string) {
+  async function handleRemove(id: string, name: string) {
+    if (!window.confirm(`Удалить источник «${name}»?`)) return;
     try {
       await api.removeSource(id);
       setSources((prev) => prev.filter((s) => s.id !== id));
@@ -107,7 +108,7 @@ export default function Sources() {
                   <div className="source-item-name">{s.name}</div>
                   <div className="source-item-url">{s.url}</div>
                 </div>
-                <button className="source-item-remove" onClick={() => handleRemove(s.id)}>
+                <button className="source-item-remove" onClick={() => handleRemove(s.id, s.name)}>
                   <TrashIcon />
                 </button>
               </div>
